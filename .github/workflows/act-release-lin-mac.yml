@@ -1,4 +1,4 @@
-# 2023-12-16 09:10
+# 2024-03-14 23:40
 name: act-Release -Lin-Mac
 
 on:
@@ -200,10 +200,10 @@ jobs:
           # sed -ibak 's!add_subdirectory (far2l-jumpword)!# add_subdirectory (far2l-jumpword)!' CMakeLists.txt;
 
           if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
-            extra_plugin_list='netcfgplugin sqlplugin';
+            extra_plugin_list='netcfgplugin sqlplugin Comment';
             extra_plugin_list2='EditWrap';
           else
-            extra_plugin_list='netcfgplugin sqlplugin processes';
+            extra_plugin_list='netcfgplugin sqlplugin processes Comment';
             extra_plugin_list2='EditWrap jumpword';
           fi
           # add new extra plugins
