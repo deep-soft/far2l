@@ -209,7 +209,6 @@ jobs:
           # add new extra plugins
           for plug in $extra_plugins_list ; do
             echo "ExtraPlugin=$plug";
-            # git clone --depth 1 https://github.com/VPROFi/$plug.git && \
             git clone --depth 1 https://github.com/deep-soft/far2l-$plug.git && \
             ( echo "mv far2l-$plug $plug" && \
               mv far2l-$plug $plug && \
