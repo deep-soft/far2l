@@ -1,4 +1,4 @@
-# 2024-03-15 00:20
+# 2024-03-15 00:30
 name: act-Release -Lin-Mac
 
 on:
@@ -186,44 +186,35 @@ jobs:
       run: |
         PLUGINS_EXTRA="true";
         if [[ "$PLUGINS_EXTRA" == "true" ]]; then
-          # old plugins, removed from base git
-          # remove existing extra plugins
-          # rm -R far2l-netcfgplugin;
-          # rm -R far2l-processes;
-          # rm -R far2l-sqlplugin;
-          # sed -ibak 's!add_subdirectory (far2l-netcfgplugin)!# add_subdirectory (far2l-netcfgplugin)!' CMakeLists.txt;
-          # sed -ibak 's!add_subdirectory (far2l-processes)!# add_subdirectory (far2l-processes)!' CMakeLists.txt;
-          # sed -ibak 's!add_subdirectory (far2l-sqlplugin)!# add_subdirectory (far2l-sqlplugin)!' CMakeLists.txt;
-          # rm -R far2l-EditWrap;
-          # rm -R far2l-jumpword;
-          # sed -ibak 's!add_subdirectory (far2l-EditWrap)!# add_subdirectory (far2l-EditWrap)!' CMakeLists.txt;
-          # sed -ibak 's!add_subdirectory (far2l-jumpword)!# add_subdirectory (far2l-jumpword)!' CMakeLists.txt;
-
           if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
-            extra_plugin_list='SimpleComment netcfgplugin sqlplugin';
+            extra_plugin_list1='SimpleComment netcfgplugin sqlplugin';
             extra_plugin_list2='EditWrap';
           else
-            extra_plugin_list='SimpleComment netcfgplugin sqlplugin processes';
+            extra_plugin_list1='SimpleComment netcfgplugin sqlplugin processes';
             extra_plugin_list2='EditWrap jumpword';
           fi
+
           # add new extra plugins
-          for plug in $extra_plugins_list ; do
-            echo "ExtraPlugin=$plug";
-            git clone --depth 1 https://github.com/deep-soft/far2l-$plug.git && \
-            ( echo "mv far2l-$plug $plug" && \
-              mv far2l-$plug $plug && \
-              cd $plug && \
+          
+          for plug1 in $extra_plugin_list1 ; do
+            echo "ExtraPluginS=$plug1";
+            git clone --depth 1 https://github.com/deep-soft/far2l-$plug1.git && \
+            ( echo "mv far2l-$plug1 $plug1" && \
+              mv far2l-$plug1 $plug1 && \
+              cd $plug1 && \
               find . -mindepth 1 -name 'src' -prune -o -exec rm -rf {} + && \
               mv src/* . && rm -rf src )
-            echo "add_subdirectory($plug)" >> CMakeLists.txt
+            echo "add_subdirectory($plug1)" >> CMakeLists.txt;
+            echo "ExtraPluginF=$plug1";
           done
-          # far2l-EditWrap far2l-jumpword
-          for plug in $extra_plugin_list2 ; do
-            echo "ExtraPlugin=$plug";
-            git clone --depth 1 https://github.com/deep-soft/far2l-$plug.git && \
-            ( echo "mv far2l-$plug $plug" && \
-              mv far2l-$plug $plug )
-            echo "add_subdirectory($plug)" >> CMakeLists.txt
+          
+          for plug2 in $extra_plugin_list2 ; do
+            echo "ExtraPluginS=$plug2";
+            git clone --depth 1 https://github.com/deep-soft/far2l-$plug2.git && \
+            ( echo "mv far2l-$plug2 $plug2" && \
+              mv far2l-$plug2 $plug2 )
+            echo "add_subdirectory($plug2)" >> CMakeLists.txt
+            echo "ExtraPluginF=$plug2";
           done
           grep "add_subdirectory" CMakeLists.txt
         fi
