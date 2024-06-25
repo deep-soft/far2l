@@ -1,0 +1,101 @@
+# 2024-03-15 00:40
+name: act-Release -Lin-Mac
+
+on:
+#  push
+  workflow_dispatch:
+    inputs:
+      SED_STUFF:
+        description: SED_STUFF
+        type: boolean
+        default: true
+        required: true
+      SED_STUFF_PARAMS:
+        description: SED_STUFF_PARAMS
+        default: "filename_to_cat"
+        required: true
+      DEBUG_MODE_1:
+        description: DEBUG_MODE_1
+        default: "N"
+        required: true
+      DEBUG_MODE_2:
+        description: DEBUG_MODE_2
+        default: "N"
+        required: true
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  PROG_NAME: far2l
+  PROG_VERSION: "v1.0.0"
+
+jobs:
+  build:
+    name: ${{ matrix.job.name }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { name: "minimal"    , os: ubuntu-20.04 , dependencies: "-minimal"     , options: ""             }
+          - { name: "minimal"    , os: ubuntu-latest, dependencies: "-minimal"     , options: ""             }
+          - { name: "minimal"    , os: macos-12     , dependencies: "-minimal"     , options: ""             }
+          - { name: "minimal"    , os: macos-latest , dependencies: "-minimal"     , options: ""             }
+
+    #if: ${{ matrix.job.name }} != 'withPYTHON' || ${{ inputs.withPYTHON }}
+    steps:
+    - uses: deep-soft/checkout@v4
+
+    - name: get os version
+      shell: bash
+      run: |
+        set -x
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          _os_name_="macos";
+          _os_version_=$(sw_vers | grep ProductVersion | cut -d':' -f2 | xargs echo -n);
+          echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV;
+        else
+          _os_release_file_="/etc/os-release"
+          if [ -f $_os_release_file_ ]; then
+            echo "-1-"
+            cat "$_os_release_file_"
+            echo "-2-"
+               _os_name_=$(cat $_os_release_file_ | grep         "^ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \")
+            _os_version_=$(cat $_os_release_file_ | grep "^VERSION_ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \")
+            echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV
+          fi
+        fi
+
+    - name: print os version
+      shell: bash
+      run: |
+        echo "OS_VERSION=${{ env.OS_VERSION }}"
+
+    - name: set program version
+      shell: bash
+      run: |
+        set -x
+        _version_=$(cat packaging/version)
+        echo "PROG_VERSION=v$_version_" >> $GITHUB_ENV
+
+    - name: print program version
+      shell: bash
+      run: |
+        echo "PROG_VERSION=${{ env.PROG_VERSION }}"
+
+    - name: sed-stuff
+      if: ${{ inputs.SED_STUFF }}
+      continue-on-error: true
+      shell: bash
+      env:
+        DEBUG_MODE_1: ${{ inputs.DEBUG_MODE_1 }}
+        DEBUG_MODE_2: ${{ inputs.DEBUG_MODE_2 }}
+      run: |
+        bash bins/sed-stuff.sh "_" "${{ inputs.SED_STUFF_PARAMS }}"
+
+    - name: check sed-stuff
+      if: ${{ inputs.SED_STUFF }}
+      continue-on-error: true
+      shell: bash
+      run: |
+        grep "ReplaceStrings" far2l/src/macro/macro.cpp
