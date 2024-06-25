@@ -38,7 +38,7 @@ on:
       SED_STUFF:
         description: SED_STUFF
         type: boolean
-        default: false
+        default: true
         required: true
       SED_STUFF_PARAMS:
         description: SED_STUFF_PARAMS
