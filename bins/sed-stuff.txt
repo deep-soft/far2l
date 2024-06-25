@@ -1,11 +1,10 @@
 #BOF#
 # sed-stuff.txt
-# 2024.06.25 22:20
+# 2024.06.25 22:50
 
 #1
-S:ReplaceStrings(strStr, L"\r\n", L";");
-R:ReplaceStrings(strStr, L"\r\n", L";");\n  ReplaceStrings(strStr, L"\r", L";");\n ReplaceStrings(strStr, L"\n", L";");
+S:ReplaceStrings(strStr, L\"\\r\\n\", L\";\");
+R:ReplaceStrings(strStr, L\"\\r\\n\", L\";\");\n			ReplaceStrings(strStr, L\"\\r\", L\";\");\n			ReplaceStrings(strStr, L\"\\n\", L\";\");
 F:far2l/src/macro/macro.cpp
 
 #EOF
-
