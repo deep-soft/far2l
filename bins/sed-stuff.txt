@@ -1,6 +1,11 @@
 #BOF#
 # sed-stuff.txt
-# 2023.12.01 01:00
+# 2024.06.25 22:20
+
+#1
+S:ReplaceStrings(strStr, L"\r\n", L";");
+R:ReplaceStrings(strStr, L"\r\n", L";");\n  ReplaceStrings(strStr, L"\r", L";");\n ReplaceStrings(strStr, L"\n", L";");
+F:far2l/far2l/src/macro/macro.cpp
 
 #EOF
 
