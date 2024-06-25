@@ -1,10 +1,8 @@
 #!/bin/bash
 #sed-stuff.sh
-#2023-12-16 08:40
+#2024-06-25 23:30
+#macosx latest /opt/homebrew instead of /usr/local
 #BOF
-
-#DEBUG_MODE_1="Y"
-#DEBUG_MODE_2="Y"
 
 export os_name=$("uname")
 case $os_name in
@@ -13,24 +11,20 @@ case $os_name in
     echo "Install gnu-sed"
     brew install gnu-sed
     export PATH="/usr/local/opt/gnu-sed/libexec/gnubin:/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
-    #echo "SED_EXE=$(which sed)" >> $GITHUB_ENV
-    SED_EXE=$(which sed)
-    echo "SED_EXE=$SED_EXE"
-    ls -l /usr/local/opt/gnu-sed/libexec/gnubin
+    # ls -l /usr/local/opt/gnu-sed/libexec/gnubin
+	# ls -l /opt/homebrew/opt/gnu-sed/libexec/gnubin
   ;;
   Linux*)
     echo "Run on Linux"
-#    echo "SED_EXE=$(which sed)" >> $GITHUB_ENV
-    SED_EXE=$(which sed)
-    echo "SED_EXE=$SED_EXE"
     ;;
   *)
     echo "Run on unknown OS: $os_name"
-#    echo "SED_EXE=$(which sed)" >> $GITHUB_ENV
-    SED_EXE=$(which sed)
-    echo "SED_EXE=$SED_EXE"
   ;;
 esac
+
+SED_EXE=$(which sed)
+echo "SED_EXE=$SED_EXE"
+echo "SED_EXE=$SED_EXE" >> $GITHUB_ENV
 
 FILE_TO_CAT="$2";
 debug_mode="$DEBUG_MODE_1";
