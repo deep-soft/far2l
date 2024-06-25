@@ -1,0 +1,309 @@
+# 2023-08-20 21:30
+name: act - amd64 and armhf
+
+on:
+  workflow_dispatch:
+    inputs:
+      make_archive_all:
+        description: 'Archive ALL'
+        type: boolean
+        default: false
+      run_tests:
+      # Execute tests defined by the CMake configuration.
+        description: 'run tests'
+        type: boolean
+        default: false
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  PROG_NAME: far2l
+  PROG_VERSION: "v1.0.0"
+
+jobs:
+  build:
+    name: ${{ matrix.job.arch }} ${{ matrix.job.os }} (${{ matrix.job.name }})
+    runs-on: ${{ matrix.job.os }}
+    # container: ubuntu:21.04
+    strategy:
+      fail-fast: false
+      matrix:
+        gcc: [ 12 ]
+        job:
+#          - { arch: amd64,  name: "minimal"   , os: ubuntu-20.04 , gcc: x86_64-linux-gnu   , dependencies: "-minimal"     , options: ""            , needs_ports: "0" }
+#          - { arch: amd64,  name: "withWX"    , os: ubuntu-20.04 , gcc: x86_64-linux-gnu   , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes" , needs_ports: "0" }
+#          - { arch: amd64,  name: "noWX"      , os: ubuntu-20.04 , gcc: x86_64-linux-gnu   , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"  , needs_ports: "0" }
+#          - { arch: amd64,  name: "withPYTHON", os: ubuntu-20.04 , gcc: x86_64-linux-gnu   , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes", needs_ports: "0" }
+          - { arch: amd64,  name: "minimal"   , os: ubuntu-latest, gcc: x86_64-linux-gnu   , dependencies: "-minimal"     , options: ""            , needs_ports: "0" }
+          - { arch: amd64,  name: "withWX"    , os: ubuntu-latest, gcc: x86_64-linux-gnu   , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes" , needs_ports: "0" }
+          - { arch: amd64,  name: "noWX"      , os: ubuntu-latest, gcc: x86_64-linux-gnu   , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"  , needs_ports: "0" }
+          - { arch: amd64,  name: "withPYTHON", os: ubuntu-latest, gcc: x86_64-linux-gnu   , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes", needs_ports: "0" }
+#          - { arch: armhf,  name: "minimal"   , os: ubuntu-20.04 , gcc: arm-linux-gnueabihf, dependencies: "-minimal"     , options: ""            , needs_ports: "1" }
+#          - { arch: armhf,  name: "withWX"    , os: ubuntu-20.04 , gcc: arm-linux-gnueabihf, dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes" , needs_ports: "1" }
+#          - { arch: armhf,  name: "noWX"      , os: ubuntu-20.04 , gcc: arm-linux-gnueabihf, dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"  , needs_ports: "1" }
+#          - { arch: armhf,  name: "withPYTHON", os: ubuntu-20.04 , gcc: arm-linux-gnueabihf, dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes", needs_ports: "1" }
+          - { arch: armhf,  name: "minimal"   , os: ubuntu-latest, gcc: arm-linux-gnueabihf, dependencies: "-minimal"     , options: ""            , needs_ports: "1" }
+          - { arch: armhf,  name: "withWX"    , os: ubuntu-latest, gcc: arm-linux-gnueabihf, dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes" , needs_ports: "1" }
+          - { arch: armhf,  name: "noWX"      , os: ubuntu-latest, gcc: arm-linux-gnueabihf, dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"  , needs_ports: "1" }
+          - { arch: armhf,  name: "withPYTHON", os: ubuntu-latest, gcc: arm-linux-gnueabihf, dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes", needs_ports: "1" }
+
+    steps:
+    - uses: deep-soft/checkout@v3
+
+    - name: get os version
+      shell: bash
+      run: |
+        set -x
+        _os_release_file_="/etc/os-release"
+        if [ -f $_os_release_file_ ]; then
+          echo "-1-"
+          cat "$_os_release_file_"
+          echo "-2-"
+             _os_name_=$(cat $_os_release_file_ | grep         "^ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \")
+          _os_version_=$(cat $_os_release_file_ | grep "^VERSION_ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \")
+          echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV
+        fi;
+
+    - name: print os version
+      shell: bash
+      run: |
+        echo "OS_VERSION=${{ env.OS_VERSION }}";
+
+    - name: set program version
+      shell: bash
+      run: |
+        set -x;
+        _version_=$(cat packaging/version);
+        echo "PROG_VERSION=v$_version_" >> $GITHUB_ENV;
+
+    - name: print program version
+      shell: bash
+      run: |
+        echo "PROG_VERSION=${{ env.PROG_VERSION }}";
+
+    - name: rename /etc/apt/apt-mirrors.txt
+      shell: bash
+      run: |
+        sudo mv /etc/apt/apt-mirrors.txt /etc/apt/apt-mirrors.txt-disabled
+        sudo echo "http://archive.ubuntu.com/ubuntu/" | sudo tee -a /etc/apt/apt-mirrors.txt;
+        sudo echo "" | sudo tee -a /etc/apt/apt-mirrors.txt;
+
+    - name: /etc/apt/sources.list 01
+      uses: deep-soft/upload-artifact@v3
+      with:
+        name: etc-apt-sources-list-01-${{ matrix.job.arch }}
+        path: |
+          /etc/apt/sources.list
+          /etc/apt/apt-mirrors.txt
+          /etc/apt/apt-mirrors.txt-disabled
+
+    - name: Install gcc for arch ${{ matrix.job.arch }}
+      shell: bash
+      run: |
+        # set -x;
+        GPP_PACKAGE="g++-${{ matrix.gcc }}-${{ matrix.job.gcc }}";
+        if [[ "${{ matrix.job.gcc }}" == "$(uname --processor)-linux-gnu" ]]; then
+          GPP_PACKAGE="g++-${{ matrix.gcc }}";
+        fi;
+        
+        if [[ "${{ matrix.job.needs_ports }}" == "1" ]]; then
+          sudo echo "deb [arch=${{ matrix.job.arch }}] http://ports.ubuntu.com/ $(lsb_release -sc) main multiverse universe" | sudo tee -a /etc/apt/sources.list;
+          sudo echo "deb [arch=${{ matrix.job.arch }}] http://ports.ubuntu.com/ $(lsb_release -sc)-updates main multiverse universe" | sudo tee -a /etc/apt/sources.list;
+          sudo echo "deb [arch=${{ matrix.job.arch }}] http://ports.ubuntu.com/ $(lsb_release -sc)-security main multiverse universe" | sudo tee -a /etc/apt/sources.list;
+          sudo echo "deb [arch=${{ matrix.job.arch }}] http://ports.ubuntu.com/ $(lsb_release -sc)-backports main multiverse universe" | sudo tee -a /etc/apt/sources.list;
+          echo "remove archive ubuntu for ports";
+          sudo sed -ibak '/\/archive.ubuntu.com/d' /etc/apt/sources.list;
+          #sudo sed -ibak -e '/archive.ubuntu.com/!b' -e /${{ matrix.job.arch }}/d /etc/apt/sources.list;
+          #sudo sed -ibak -e '/archive.ubuntu.com/!b' -e /arm64/d /etc/apt/sources.list;
+          #sudo sed -ibak -e '/archive.ubuntu.com/!b' -e /riscv64/d /etc/apt/sources.list;
+          #sudo sed -ibak -e '/archive.ubuntu.com/!b' -e /armhf/d /etc/apt/sources.list;
+          #sudo sed -ibak -e '/archive.ubuntu.com/!b' -e /ppc64el/d /etc/apt/sources.list;
+          echo "BGN: cat /etc/apt/sources.list";
+          cat /etc/apt/sources.list;
+          echo "END: cat /etc/apt/sources.list";
+        fi
+
+    - name: /etc/apt/sources.list 02
+      uses: deep-soft/upload-artifact@v3
+      with:
+        name: etc-apt-sources-list-02-${{ matrix.job.arch }}
+        path: |
+          /etc/apt/sources.list
+          /etc/apt/apt-mirrors.txt
+          /etc/apt/apt-mirrors.txt-disabled
+
+    - name: Install gcc for arch ${{ matrix.job.arch }} - part 2
+      shell: bash
+      run: |
+        # This limits apt to only looking for amd64 and i386 from Azure, see https://github.com/actions/virtual-environments/issues/1961
+        sudo sed -i'' -E 's/^deb http:\/\/(azure.jobive|security).ubuntu.com/deb [arch=amd64,i386] http:\/\/\1.ubuntu.com/' /etc/apt/sources.list;
+        sudo dpkg --add-architecture "${{ matrix.job.arch }}";
+        sudo apt install ca-certificates -y && true
+        sudo apt-get update && true
+        sudo apt-get install -y "${GPP_PACKAGE}" && true
+        #          "libx11-dev:${{ matrix.job.arch }}" \
+        #          "libwayland-dev:${{ matrix.job.arch }}" \
+        #          "wayland-protocols:${{ matrix.job.arch }}" \
+        #          "libasound-dev:${{ matrix.job.arch }}";
+        #        cd build;
+        #        cmake .. \
+        #          "-DCMAKE_CXX_COMPILER=${{ matrix.job.gcc }}-g++-${{ matrix.gcc }}" \
+        #          "-DCMAKE_C_COMPILER=${{ matrix.job.gcc }}-gcc-${{ matrix.gcc }}" \
+        #          "-DCMAKE_BUILD_TYPE=Release";
+
+    - name: /etc/apt/sources.list 03
+      uses: deep-soft/upload-artifact@v3
+      with:
+        name: etc-apt-sources-list-03-${{ matrix.job.arch }}
+        path: |
+          /etc/apt/sources.list
+          /etc/apt/apt-mirrors.txt
+          /etc/apt/apt-mirrors.txt-disabled
+
+    - name: Dependencies
+      shell: bash
+      run: |
+        set -x
+        #    - name: add dependencies
+        #      shell: bash
+        #       run: |
+        # echo "" >> dependencies.txt;
+        # echo "libtiff5" >> dependencies.txt;
+        # echo "" >> dependencies.txt;
+        # echo "${GPP_PACKAGE}" >> dependencies.txt;
+        cp dependencies.txt dependencies-smb-nfs-neon.txt;
+        echo "" >> dependencies-smb-nfs-neon.txt;
+        echo "libsmbclient-dev" >> dependencies-smb-nfs-neon.txt;
+        echo "libnfs-dev" >> dependencies-smb-nfs-neon.txt;
+        echo "libneon27-dev" >> dependencies-smb-nfs-neon.txt;
+        # echo "libneon*-dev" >> dependencies-smb-nfs-neon.txt;
+        
+        # clean empty lines
+        sed 's/^ *//; s/ *$//; /^$/d; /^\s*$/d' -i dependencies.txt
+        sed 's/^ *//; s/ *$//; /^$/d; /^\s*$/d' -i dependencies-minimal.txt
+        sed 's/^ *//; s/ *$//; /^$/d; /^\s*$/d' -i dependencies-smb-nfs-neon.txt
+        # add matrix.job.arch if needed
+        if [[ "${{ matrix.job.needs_ports }}" == "1" ]]; then
+          sed -e 's/$/:${{ matrix.job.arch }}/' -i dependencies.txt
+          sed -e 's/$/:${{ matrix.job.arch }}/' -i dependencies-minimal.txt
+          sed -e 's/$/:${{ matrix.job.arch }}/' -i dependencies-smb-nfs-neon.txt
+        fi
+        #
+        echo "...dependencies.txt - begin" 
+        cat dependencies.txt
+        echo "...dependencies.txt - end" 
+        echo "...dependencies-smb-nfs-neon.txt - begin" 
+        cat dependencies-smb-nfs-neon.txt
+        echo "...dependencies-smb-nfs-neon.txt - end" 
+        # sudo apt-get update
+        # sudo dpkg --configure -a
+        # sudo apt -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
+        # sudo dpkg --configure -a
+        # sudo apt install aptitude
+        # sudo aptitude -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
+
+        sudo apt -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
+
+    - name: restore /etc/apt/apt-mirrors.txt
+      shell: bash
+      run: |
+        sudo rm /etc/apt/apt-mirrors.txt
+        sudo mv /etc/apt/apt-mirrors.txt-disabled /etc/apt/apt-mirrors.txt
+
+    - name: Create Build Environment
+      # Some projects don't allow in-source building, so create a separate build directory
+      # We'll use this as our working directory for all subsequent commands
+      shell: bash
+      run: cmake -E make_directory ${{github.workspace}}/build;
+
+    - name: Configure CMake
+      # Use a bash shell so we can use the same syntax for environment variable
+      # access regardless of the host operating system
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      # Note the current convention is to use the -S and -B options here to specify source 
+      # and build directories, but this is only available with CMake 3.13 and higher.  
+      # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+      run: |
+        cmake $GITHUB_WORKSPACE ${{ matrix.job.options }} \
+            "-DCMAKE_CXX_COMPILER=${{ matrix.job.gcc }}-g++-${{ matrix.gcc }}" \
+            "-DCMAKE_C_COMPILER=${{ matrix.job.gcc }}-gcc-${{ matrix.gcc }}" \
+            "-DCMAKE_BUILD_TYPE=$BUILD_TYPE";
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      # Execute the build.  You can specify a specific target with "--target <NAME>"
+      run: cmake --build . --config $BUILD_TYPE;
+
+    - name: Build package
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: |
+        cmake --build . --target package;
+        mv ${{ env.PROG_NAME }}*.deb    ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.deb;
+        mv ${{ env.PROG_NAME }}*.tar.gz ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.tar.gz;
+
+    - name: File Tree
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: tree;
+
+#    - name: Packing Artifact
+#      uses: deep-soft/upload-artifact@v3
+#      with:
+#        name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ matrix.job.name }}
+#        path: ${{github.workspace}}/build/install
+
+    - name: Archive Release
+      uses: deep-soft/zip-release@v2
+      with:
+        type: 'zip'
+        filename: '${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.zip'
+        directory: '${{github.workspace}}/build/install'
+        # exclusions: '*.git* /*node_modules/* .editorconfig'
+        exclusions: '*Bel.lng *Rus.lng *Cze.lng *Ger.lng *Hun.lng *Pol.lng *Spa.lng *Ukr.lng *bel.lng *rus.lng *calcb.lng *calcr.lng *colorerb.lng *colorerr.lng *editorcomp_be.lng *editorcomp_ru.lng *isrcrus.lng'
+        recursive_exclusions: '*Bel.lng *Rus.lng *Cze.lng *Ger.lng *Hun.lng *Pol.lng *Spa.lng *Ukr.lng *bel.lng *rus.lng *calcb.lng *calcr.lng *colorerb.lng *colorerr.lng *editorcomp_be.lng *editorcomp_ru.lng *isrcrus.lng'
+        debug: yes
+
+    - name: Publish Release
+      continue-on-error: true
+      uses: deep-soft/action-gh-release@v1
+      with:
+        draft: true
+        tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
+        files: |
+          ${{ env.ZIP_RELEASE_ARCHIVE }}
+          ${{github.workspace}}/build/${{ env.PROG_NAME }}*.deb
+          ${{github.workspace}}/build/${{ env.PROG_NAME }}*.tar.gz
+
+    - name: Archive Release - All
+      if: ${{ inputs.make_archive_all }}
+      uses: deep-soft/zip-release@v2
+      with:
+        type: 'zip'
+        filename: '${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}-ALL.zip'
+        directory: '${{github.workspace}}'
+        # exclusions: '*.git* /*node_modules/* .editorconfig'
+        exclusions: ''
+        recursive_exclusions: ''
+        env_variable: ZIP_RELEASE_ARCHIVE_ALL
+        debug: yes
+
+    - name: Publish Release - All
+      if: ${{ inputs.make_archive_all }}
+      continue-on-error: true
+      uses: deep-soft/action-gh-release@v1
+      with:
+        draft: true
+        tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-ALL
+        files: |
+          ${{ env.ZIP_RELEASE_ARCHIVE_ALL }}
+
+    - name: Test
+      if: ${{ inputs.run_tests }}
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      # Execute tests defined by the CMake configuration.  
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      run: ctest -C $BUILD_TYPE

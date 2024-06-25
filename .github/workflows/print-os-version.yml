@@ -1,0 +1,69 @@
+# 2023-12-16 09:00
+name: act-print-os-version
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.job.name }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { name: "minimal"    , os: ubuntu-20.04 , dependencies: "-minimal"     , options: ""             }
+          - { name: "withWX"     , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
+          - { name: "noWX"       , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
+          - { name: "withPYTHON" , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          - { name: "minimal"    , os: ubuntu-latest, dependencies: "-minimal"     , options: ""             }
+          - { name: "withWX"     , os: ubuntu-latest, dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
+          - { name: "noWX"       , os: ubuntu-latest, dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
+          - { name: "withPYTHON" , os: ubuntu-latest, dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          - { name: "minimal"    , os: macos-latest , dependencies: "-minimal"     , options: ""             }
+          - { name: "withWX"     , os: macos-latest , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
+          - { name: "noWX"       , os: macos-latest , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
+          - { name: "withPYTHON" , os: macos-latest , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+
+    steps:
+    - name: set env.SED_EXE and macOS install gnu-sed
+      #if: ${{ startsWith(matrix.job.os, 'macos') }}
+      shell: bash
+      run: |
+        SED_EXE=$(which sed);
+        echo "SED_EXE=$SED_EXE";
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          brew install gnu-sed;
+          export PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH";
+          SED_EXE=$(which sed);
+        fi
+        echo "SED_EXE=$SED_EXE";
+        echo "SED_EXE=$SED_EXE" >> $GITHUB_ENV;
+        #ls -la $SED_EXE;
+        #export sed=$SED_EXE
+        #which sed
+
+    - name: get os version
+      shell: bash
+      run: |
+        set -x
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          _os_name_="macos";
+          _os_version_=$(sw_vers | grep ProductVersion | cut -d':' -f2 | xargs echo -n);
+          echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV;
+        else
+          _os_release_file_="/etc/os-release"
+          if [ -f $_os_release_file_ ]; then
+            echo "-1-"
+            cat "$_os_release_file_"
+            echo "-2-"
+               _os_name_=$(cat $_os_release_file_ | grep         "^ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \")
+            _os_version_=$(cat $_os_release_file_ | grep "^VERSION_ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \")
+            echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV
+          fi
+        fi
+
+    - name: print os version
+      shell: bash
+      run: |
+        echo "OS_VERSION=${{ env.OS_VERSION }}"

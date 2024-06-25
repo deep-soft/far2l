@@ -1,0 +1,123 @@
+# 2023-12-16 09:10
+name: act-test-libxau
+
+on:
+  workflow_dispatch:
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  PROG_NAME: far2l
+  PROG_VERSION: "v1.0.0"
+
+jobs:
+  build:
+    name: ${{ matrix.job.name }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { name: "withPYTHON" , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          - { name: "withPYTHON" , os: macos-latest , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+
+    steps:
+    - uses: deep-soft/checkout@v3
+
+    - name: get os version
+      shell: bash
+      run: |
+        set -x
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          _os_name_="macos";
+          _os_version_=$(sw_vers | grep ProductVersion | cut -d':' -f2 | xargs echo -n);
+          echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV;
+        else
+          _os_release_file_="/etc/os-release"
+          if [ -f $_os_release_file_ ]; then
+            echo "-1-"
+            cat "$_os_release_file_"
+            echo "-2-"
+               _os_name_=$(cat $_os_release_file_ | grep         "^ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \")
+            _os_version_=$(cat $_os_release_file_ | grep "^VERSION_ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \")
+            echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV
+          fi
+        fi
+
+    - name: print os version
+      shell: bash
+      run: |
+        echo "OS_VERSION=${{ env.OS_VERSION }}"
+
+    - name: set program version
+      shell: bash
+      run: |
+        set -x
+        _version_=$(cat packaging/version)
+        echo "PROG_VERSION=v$_version_" >> $GITHUB_ENV
+
+    - name: print program version
+      shell: bash
+      run: |
+        echo "PROG_VERSION=${{ env.PROG_VERSION }}"
+
+    - name: set env.SED_EXE and macOS install gnu-sed
+      #if: ${{ startsWith(matrix.job.os, 'macos') }}
+      shell: bash
+      run: |
+        SED_EXE=$(which sed);
+        echo "SED_EXE=$SED_EXE";
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          brew install gnu-sed;
+          export PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH";
+          SED_EXE=$(which sed);
+        fi
+        echo "SED_EXE=$SED_EXE";
+        echo "SED_EXE=$SED_EXE" >> $GITHUB_ENV;
+        #ls -la $SED_EXE;
+        #export sed=$SED_EXE
+        #which sed
+
+    - name: add dependencies
+      shell: bash
+      run: |
+        cp dependencies.txt dependencies-smb-nfs-neon.txt
+        echo "" >> dependencies-smb-nfs-neon.txt
+        echo "libsmbclient-dev" >> dependencies-smb-nfs-neon.txt
+        echo "libnfs-dev" >> dependencies-smb-nfs-neon.txt
+        echo "libneon27-dev" >> dependencies-smb-nfs-neon.txt
+        # echo "libneon*-dev" >> dependencies-smb-nfs-neon.txt
+
+    - name: Dependencies
+      continue-on-error: true
+      run: |
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          brew bundle -v
+          export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          brew install libxau tree
+          ls -lR /usr/local/Cellar/libxau/* || true;
+        else
+          sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
+        fi
+
+    - name: Create Build Environment
+      # Some projects don't allow in-source building, so create a separate build directory
+      # We'll use this as our working directory for all subsequent commands
+      run: cmake -E make_directory ${{github.workspace}}/build
+
+    - name: Configure CMake
+      # Use a bash shell so we can use the same syntax for environment variable
+      # access regardless of the host operating system
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      # Note the current convention is to use the -S and -B options here to specify source 
+      # and build directories, but this is only available with CMake 3.13 and higher.  
+      # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }}
+
+    - name: File Tree
+      continue-on-error: true
+      working-directory: ${{github.workspace}}
+      shell: bash
+      run: tree
