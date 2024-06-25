@@ -14,6 +14,7 @@ case $os_name in
     brew install gnu-sed
     export PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH"
     #echo "SED_EXE=$(which sed)" >> $GITHUB_ENV
+	alias sed='gsed'
     SED_EXE=$(which sed)
     echo "SED_EXE=$SED_EXE"
     ls -l /usr/local/opt/gnu-sed/libexec/gnubin
