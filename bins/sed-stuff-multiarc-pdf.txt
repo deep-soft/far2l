@@ -1,0 +1,16 @@
+#BOF#
+# sed-stuff.txt
+# 2023.11.30 21:00
+
+#1
+S:#ifdef HAVE_LIBARCHIVE
+R:	AddPluginItem(PDF_IsArchive, PDF_OpenArchive, PDF_GetArcItem, NULL, PDF_CloseArchive, PDF_GetFormatName, PDF_GetDefaultCommands, NULL, NULL);\n#ifdef HAVE_LIBARCHIVE
+F:multiarc/src/ArcPlg.cpp
+
+#2
+S:src/arccmd.cpp
+R:src/arccmd.cpp\n    src/formats/pdf/pdf.cpp
+F:multiarc/CMakeLists.txt
+
+#EOF
+
