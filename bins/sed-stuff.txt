@@ -1,10 +1,10 @@
 #BOF#
 # sed-stuff.txt
-# 2024.06.25 22:50
+# 2024.07.14 02:50
 
-#1
-S:ReplaceStrings(strStr, L\"\\r\\n\", L\";\");
-R:ReplaceStrings(strStr, L\"\\r\\n\", L\";\");\n			ReplaceStrings(strStr, L\"\\r\", L\";\");\n			ReplaceStrings(strStr, L\"\\n\", L\";\");
-F:far2l/src/macro/macro.cpp
+#1, not needed any more, https://github.com/elfmz/far2l/commit/bbba0d16f2aa74f866c45d34f2fdba53a8a2a571
+#S:ReplaceStrings(strStr, L\"\\r\\n\", L\";\");
+#R:ReplaceStrings(strStr, L\"\\r\\n\", L\";\");\n			ReplaceStrings(strStr, L\"\\r\", L\";\");\n			ReplaceStrings(strStr, L\"\\n\", L\";\");
+#F:far2l/src/macro/macro.cpp
 
 #EOF
