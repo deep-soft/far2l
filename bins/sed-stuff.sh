@@ -1,6 +1,6 @@
 #!/bin/bash
 #sed-stuff.sh
-#2024-06-25 23:30
+#2024-07-19 07:20
 #macosx latest /opt/homebrew instead of /usr/local
 #BOF
 
@@ -9,7 +9,8 @@ case $os_name in
   Darwin*)
     echo "Run on OSX"
     echo "Install gnu-sed"
-    brew install gnu-sed
+    # brew install gnu-sed
+	brew reinstall gnu-sed
     export PATH="/usr/local/opt/gnu-sed/libexec/gnubin:/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
     # ls -l /usr/local/opt/gnu-sed/libexec/gnubin
 	# ls -l /opt/homebrew/opt/gnu-sed/libexec/gnubin
