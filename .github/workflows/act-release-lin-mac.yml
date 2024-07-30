@@ -244,8 +244,8 @@ jobs:
           export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
           echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
           # brew reinstall libxau tree
-          brew reinstall libxau tree uchardet xerces-c wxwidgets libxi samba libnfs neon libssh libarchive pcre
-          ls /opt/homebrew/Cellar/libxau/1.0.11/lib/libXau* || true;
+          # ls /opt/homebrew/Cellar/libxau/1.0.11/lib/libXau* || true;
+          brew install libxau tree uchardet xerces-c wxwidgets libxi libnfs neon samba libssh libarchive pcre
         fi
         if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
           brew bundle -v
@@ -253,9 +253,8 @@ jobs:
           echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
           # brew reinstall libxau tree
           # ls /opt/homebrew/Cellar/libxau/1.0.11/lib/libXau* || true;
-          # 
           # brew reinstall libxau tree uchardet xerces-c wxwidgets libxi samba libnfs neon libssh libarchive pcre
-          brew reinstall libxau tree uchardet xerces-c wxwidgets libxi samba libnfs neon libssh libarchive pcre
+          brew install libxau tree uchardet xerces-c wxwidgets libxi libnfs neon samba libssh libarchive pcre
           # Relink 'keg-only' packages
           brew link libarchive --force
         fi
