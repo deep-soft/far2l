@@ -189,8 +189,7 @@ jobs:
       if: ${{ inputs.PLUGINS_EXTRA }}
       shell: bash
       run: |
-        PLUGINS_EXTRA="true";
-        if [[ "$PLUGINS_EXTRA" == "true" ]]; then
+        if [[ ${{ matrix.job.name }} != "minimal" ]]; then
           if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
             extra_plugin_list1='netcfgplugin sqlplugin';
             extra_plugin_list2='SimpleComment EditWrap';
