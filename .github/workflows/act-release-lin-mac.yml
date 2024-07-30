@@ -237,14 +237,18 @@ jobs:
     - name: Dependencies
       continue-on-error: true
       run: |
-        if [[ ${{ matrix.job.os }} = "macos-12" ]]; then
+        if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
+          sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
+        fi
+        if [[ ${{ matrix.job.os }} =~ "macos-12" ]]; then
           brew bundle -v
           export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
           echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          brew reinstall libxau tree
+          # brew reinstall libxau tree
+          brew reinstall libxau tree uchardet xerces-c wxwidgets libxi samba libnfs neon libssh libarchive pcre
           ls /opt/homebrew/Cellar/libxau/1.0.11/lib/libXau* || true;
-        else
-        if [[ ${{ matrix.job.os }} = "macos-latest" ]]; then
+        fi
+        if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
           brew bundle -v
           export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
           echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
@@ -255,8 +259,6 @@ jobs:
           brew reinstall libxau tree uchardet xerces-c wxwidgets libxi samba libnfs neon libssh libarchive pcre
           # Relink 'keg-only' packages
           brew link libarchive --force
-        else
-          sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
         fi
 
     - name: Create Build Environment
