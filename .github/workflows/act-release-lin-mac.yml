@@ -245,7 +245,9 @@ jobs:
           echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
           # brew install libxau tree uchardet xml2 wxwidgets libxi libnfs neon samba libssh libarchive pcre
           brew reinstall libxau tree
-          ls /usr/local/Cellar/libxau/* || true;
+          brew link libxau --force
+          brew unlink libxau && brew link libxau
+          ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
         fi
         if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
           #brew bundle -v
@@ -260,6 +262,7 @@ jobs:
           brew link libarchive --force
           brew link libxau --force
           brew unlink libxau && brew link libxau
+          ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
         fi
 
     - name: Create Build Environment
