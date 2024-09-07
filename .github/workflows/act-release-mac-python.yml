@@ -322,9 +322,27 @@ jobs:
       working-directory: ${{github.workspace}}/build
       shell: bash
       run: |
+        echo LS1-begin
+        ls -la
+        echo LS1-end
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l || true;
         install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l.app || true;
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib app || true;
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib package || true;
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib ${MACOSX_BUNDLE_EXECUTABLE_NAME} || true;
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib ${CPACK_PACKAGE_NAME} || true;
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib ${CPACK_DMG_VOLUME_NAME} || true;
         cmake --build . --target package || true
+        echo LS2-begin
+        ls -la
+        echo LS2-end
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l || true;
         install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l.app || true;
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib app || true;
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib package || true;
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib ${MACOSX_BUNDLE_EXECUTABLE_NAME} || true;
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib ${CPACK_PACKAGE_NAME} || true;
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib ${CPACK_DMG_VOLUME_NAME} || true;
         cmake --build . --target package || true
         if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
           mv ${{ env.PROG_NAME }}*.dmg    ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.dmg
