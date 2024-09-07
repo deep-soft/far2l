@@ -322,8 +322,10 @@ jobs:
       working-directory: ${{github.workspace}}/build
       shell: bash
       run: |
-        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib app || true;
-        cmake --build . --target package
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l.app || true;
+        cmake --build . --target package || true
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l.app || true;
+        cmake --build . --target package || true
         if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
           mv ${{ env.PROG_NAME }}*.dmg    ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.dmg
         else
