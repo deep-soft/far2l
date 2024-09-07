@@ -264,7 +264,6 @@ jobs:
           # tar -cf libxau-arc.tar.xz /usr/local/Cellar/libxau/*
           tar --exclude=*.tar* -cv /usr/local/Cellar/libxau/ | xz -9 > "libxau-arc-m12.tar.xz"
           ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
-          install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l || true;
         fi
         if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
           brew bundle -v
@@ -279,7 +278,6 @@ jobs:
           brew unlink libxau && brew link libxau
           tar --exclude=*.tar* -cv /usr/local/Cellar/libxau/ | xz -9 > "libxau-arc-mlast.tar.xz"
           ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
-          install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l || true;
         fi
 
     - name: Create Build Environment
@@ -324,6 +322,7 @@ jobs:
       working-directory: ${{github.workspace}}/build
       shell: bash
       run: |
+        install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib app || true;
         cmake --build . --target package
         if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
           mv ${{ env.PROG_NAME }}*.dmg    ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.dmg
