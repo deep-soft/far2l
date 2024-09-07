@@ -191,7 +191,11 @@ jobs:
       run: |
         if [[ ${{ matrix.job.name }} != "minimal" ]]; then
           if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
-            extra_plugin_list1='netcfgplugin sqlplugin';
+            if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
+              extra_plugin_list1='sqlplugin';
+            else
+              extra_plugin_list1='netcfgplugin sqlplugin';
+            fi
             extra_plugin_list2='SimpleComment EditWrap';
           else
             extra_plugin_list1='netcfgplugin sqlplugin processes';
@@ -233,6 +237,18 @@ jobs:
         echo "libneon27-dev" >> dependencies-smb-nfs-neon.txt
         # echo "libneon*-dev" >> dependencies-smb-nfs-neon.txt
 
+    - name: Pre Dependencies
+      continue-on-error: true
+      run: |
+        if [[ ${{ matrix.job.os }} =~ "macos-12" ]]; then
+          export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        fi
+        if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
+          export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        fi
+
     - name: Dependencies
       continue-on-error: true
       run: |
@@ -241,8 +257,6 @@ jobs:
         fi
         if [[ ${{ matrix.job.os }} =~ "macos-12" ]]; then
           brew bundle -v
-          export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
           # brew install libxau tree uchardet xml2 wxwidgets libxi libnfs neon samba libssh libarchive pcre
           brew reinstall libxau tree
           brew link libxau --force
@@ -250,13 +264,10 @@ jobs:
           # tar -cf libxau-arc.tar.xz /usr/local/Cellar/libxau/*
           tar --exclude=*.tar* -cv /usr/local/Cellar/libxau/ | xz -9 > "libxau-arc-m12.tar.xz"
           ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
-          install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l
+          install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l || true;
         fi
         if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
-          #brew bundle -v
-          #export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
-          export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          brew bundle -v
           # brew reinstall libxau tree
           # ls /opt/homebrew/Cellar/libxau/1.0.11/lib/libXau* || true;
           # brew reinstall libxau tree uchardet xml2 wxwidgets libxi samba libnfs neon libssh libarchive pcre
@@ -268,7 +279,7 @@ jobs:
           brew unlink libxau && brew link libxau
           tar --exclude=*.tar* -cv /usr/local/Cellar/libxau/ | xz -9 > "libxau-arc-mlast.tar.xz"
           ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
-          install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l
+          install_name_tool -change @loader_path/libXau.6.0.0.dylib usr/local/Cellar/libxau/1.0.11/lib/libXau.6.0.0.dylib far2l || true;
         fi
 
     - name: Create Build Environment
