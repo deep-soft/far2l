@@ -197,7 +197,7 @@ jobs:
             extra_plugin_list1='netcfgplugin sqlplugin processes';
             extra_plugin_list2='SimpleComment EditWrap jumpword';
           fi
-          if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
+          if [[ ${{ matrix.job.os }} =~ "macos-13" ]]; then
             extra_plugin_list1='sqlplugin';
             extra_plugin_list2='SimpleComment EditWrap';
           fi
@@ -254,7 +254,7 @@ jobs:
           brew unlink libxau && brew link libxau
           ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
         fi
-        if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
+        if [[ ${{ matrix.job.os }} =~ "macos-13" ]]; then
           #brew bundle -v
           #export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
           #echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
