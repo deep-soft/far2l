@@ -1,4 +1,4 @@
-# 2024-09-23 15:30
+# 2024-10-14 23:00
 name: act-Release -Lin-Mac
 
 on:
@@ -78,11 +78,15 @@ jobs:
           - { name: "minimal"    , os: macos-12     , dependencies: "-minimal"     , options: ""             }
           - { name: "withWX"     , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
           - { name: "noWX"       , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
-          - { name: "withPYTHON" , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          #- { name: "withPYTHON" , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
           - { name: "minimal"    , os: macos-13     , dependencies: "-minimal"     , options: ""             }
           - { name: "withWX"     , os: macos-13     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
           - { name: "noWX"       , os: macos-13     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
           - { name: "withPYTHON" , os: macos-13     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          - { name: "minimal"    , os: macos-14     , dependencies: "-minimal"     , options: ""             }
+          - { name: "withWX"     , os: macos-14     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
+          - { name: "noWX"       , os: macos-14     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
+          - { name: "withPYTHON" , os: macos-14     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
 
     #if: ${{ matrix.job.name }} != 'withPYTHON' || ${{ inputs.withPYTHON }}
     steps:
@@ -244,30 +248,46 @@ jobs:
         if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
           sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
         fi
-        if [[ ${{ matrix.job.os }} =~ "macos-12" ]]; then
-          brew bundle -v
-          export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          # brew install libxau tree uchardet xml2 wxwidgets libxi libnfs neon samba libssh libarchive pcre
-          brew reinstall libxau tree
-          brew link libxau --force
-          brew unlink libxau && brew link libxau
-          ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          brew install
+          uchardet libxml2 wxwidgets
+          libxi
+          samba libnfs neon libssh
+          libarchive pcre        
         fi
-        if [[ ${{ matrix.job.os }} =~ "macos-13" ]]; then
-          #brew bundle -v
-          #export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
-          #echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          # brew reinstall libxau tree
-          # ls /opt/homebrew/Cellar/libxau/1.0.11/lib/libXau* || true;
-          # brew reinstall libxau tree uchardet xml2 wxwidgets libxi samba libnfs neon libssh libarchive pcre
-          brew install libxau tree uchardet xml2 wxwidgets libxi libnfs neon samba libssh libarchive pcre
-          brew reinstall libxau tree
-          # Relink 'keg-only' packages
+
+# old dependencies
+#        if [[ ${{ matrix.job.os }} =~ "macos-12" ]]; then
+#          brew bundle -v
+#          export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
+#          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+#          # brew install libxau tree uchardet xml2 wxwidgets libxi libnfs neon samba libssh libarchive pcre
+#          brew reinstall libxau tree
+#          brew link libxau --force
+#          brew unlink libxau && brew link libxau
+#          ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
+#        fi
+#        if [[ ${{ matrix.job.os }} =~ "macos-13" ]]; then
+#          #brew bundle -v
+#          #export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
+#          #echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+#          # brew reinstall libxau tree
+#          # ls /opt/homebrew/Cellar/libxau/1.0.11/lib/libXau* || true;
+#          # brew reinstall libxau tree uchardet xml2 wxwidgets libxi samba libnfs neon libssh libarchive pcre
+#          brew install libxau tree uchardet xml2 wxwidgets libxi libnfs neon samba libssh libarchive pcre
+#          brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive pcre
+#          brew reinstall libxau tree
+#          # Relink 'keg-only' packages
+#          brew link libarchive --force
+#          brew link libxau --force
+#          brew unlink libxau && brew link libxau
+#          ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
+#        fi
+
+    - name: Relink 'keg-only' packages
+      run: |
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
           brew link libarchive --force
-          brew link libxau --force
-          brew unlink libxau && brew link libxau
-          ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
         fi
 
     - name: Create Build Environment
