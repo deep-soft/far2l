@@ -4,29 +4,29 @@ on:
   # allow manually running workflow, useful for testing branches
   workflow_dispatch:
   # run on push in master
-#  push:
-#    branches:
-#      - master
-#    paths-ignore:
-#      - '.vscode/**'
-#      - '.cirrus.yml'
-#      - '.clang-format'
-#      - '.clang-format.json'
-#      - '.editorconfig'
-#      - '.gitignore'
-#      - '.travis.yml'
-#      - 'Brewfile'
-#      - 'CODESTYLE.md'
-#      - 'dependencies-minimal.txt'
-#      - 'dependencies.txt'
-#      - 'Dockerfile'
-#      - 'HACKING.md'
-#      - 'LICENSE.txt'
-#      - 'README.md'
-#  # run on pull request to master
-#  pull_request:
-#    branches:
-#      - master
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '.vscode/**'
+      - '.cirrus.yml'
+      - '.clang-format'
+      - '.clang-format.json'
+      - '.editorconfig'
+      - '.gitignore'
+      - '.travis.yml'
+      - 'Brewfile'
+      - 'CODESTYLE.md'
+      - 'dependencies-minimal.txt'
+      - 'dependencies.txt'
+      - 'Dockerfile'
+      - 'HACKING.md'
+      - 'LICENSE.txt'
+      - 'README.md'
+  # run on pull request to master
+  pull_request:
+    branches:
+      - master
   
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
