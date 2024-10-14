@@ -249,11 +249,7 @@ jobs:
           sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
         fi
         if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
-          brew install
-          uchardet libxml2 wxwidgets
-          libxi
-          samba libnfs neon libssh
-          libarchive pcre        
+          brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive pcre        
         fi
 
 # old dependencies
