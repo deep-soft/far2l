@@ -23,7 +23,7 @@
 // If time between adhoc text copy and mouse button release less then this value then text will not be copied. Used to protect against unwanted copy-paste-s
 #define QEDIT_COPY_MINIMAL_DELAY 150
 
-// This defines muh much time UI remain frozen after user released qedit, that
+// This defines how much time UI remain frozen after user released qedit, that
 // allows user to quickly select another location before all shadowed output changes applied
 #define QEDIT_UNFREEZE_DELAY     1000
 
@@ -870,11 +870,11 @@ void WinPortPanel::OnConsoleOutputUpdated(const SMALL_RECT *areas, size_t count)
 		if (_refresh_rects.empty()) {
 			action = A_QUEUE;
 #ifndef __APPLE__
-		} else if (_refresh_rects_throttle != (DWORD)-1 &&
+		} else if (_refresh_rects_throttle != 0 &&
 				WINPORT(GetTickCount)() - _refresh_rects_throttle > 500 &&
 				!wxIsMainThread()) {
 			action = A_THROTTLE;
-			_refresh_rects_throttle = (DWORD)-1;
+			_refresh_rects_throttle = 0;
 #else
 //TODO: fix stuck
 #endif
@@ -958,8 +958,6 @@ void WinPortPanel::OnConsoleOutputUpdated(const SMALL_RECT *areas, size_t count)
 			CallInMain<int>(fn);
 			std::lock_guard<std::mutex> lock(_refresh_rects);
 			_refresh_rects_throttle = WINPORT(GetTickCount)();
-			if (_refresh_rects_throttle == (DWORD)-1)
-				_refresh_rects_throttle = 0;
 		} break;
 		
 		case A_NOTHING: break;
@@ -1565,9 +1563,8 @@ void WinPortPanel::OnKeyUp( wxKeyEvent& event )
 		(!_key_tracker.Alt() || _key_tracker.Shift() || _key_tracker.LeftControl() || _key_tracker.RightControl()
 		|| !isNumpadNumericKey(event.GetKeyCode()) || g_wayland) && // workaround for #2294, 2464
 #endif
-
-			_key_tracker.CheckForSuddenModifiersUp()) {
-				_exclusive_hotkeys.Reset();
+		_key_tracker.CheckForSuddenModifiersUp()) {
+			_exclusive_hotkeys.Reset();
 	}
 	//event.Skip();
 }
@@ -1624,8 +1621,8 @@ void WinPortPanel::OnChar( wxKeyEvent& event )
 			ir.Event.KeyEvent.wVirtualKeyCode = ir_tmp.Event.KeyEvent.wVirtualKeyCode;
 			ir.Event.KeyEvent.wVirtualScanCode = ir_tmp.Event.KeyEvent.wVirtualScanCode;
 			ir.Event.KeyEvent.dwControlKeyState = ir_tmp.Event.KeyEvent.dwControlKeyState;
-
 			ir.Event.KeyEvent.dwControlKeyState |= LEFT_ALT_PRESSED;
+			WINPORT(CharUpperBuff)(&ir.Event.KeyEvent.uChar.UnicodeChar, 1);
 		}
 #endif
 
@@ -1635,11 +1632,13 @@ void WinPortPanel::OnChar( wxKeyEvent& event )
 		ir.Event.KeyEvent.bKeyDown = FALSE;
 		wxConsoleInputShim::Enqueue(&ir, 1);
 
+		_enqueued_in_onchar = true;
+
+#if !defined(__WXOSX__)
 		// avoid double up event in ResetInputState()
 		wxKeyEvent keyEventCopy = _key_tracker.LastKeydown();
 		_key_tracker.OnKeyUp(keyEventCopy);
-
-		_enqueued_in_onchar = true;
+#endif
 	}
 	//event.Skip();
 }
@@ -1812,7 +1811,6 @@ void WinPortPanel::OnMouseQEdit( wxMouseEvent &event, COORD pos_char )
 		} else {
 			_qedit_unfreeze_start_ticks = 0;
 		}
-		_qedit_out_state = QOS_FROZEN_BUSY;
 		DamageAreaBetween(_mouse_qedit_start, _mouse_qedit_last);
 
 	} else if (_mouse_qedit_start_ticks != 0) {

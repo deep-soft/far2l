@@ -70,9 +70,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtcompletor.h"
 #include <limits>
 
-#include "clipboard.hpp"
-#include "farversion.h"
-
 CommandLine::CommandLine()
 	:
 	CmdStr(CtrlObject->Cp(), 0, true, CtrlObject->CmdHistory, 0,
@@ -868,9 +865,10 @@ void CommandLine::SaveBackground()
 	} else
 		fprintf(stderr, "CommandLine::SaveBackground: no BackgroundScreen\n");
 }
-void CommandLine::ShowBackground()
+
+void CommandLine::ShowBackground(bool showanyway)
 {
-	if (!IsVisible())
+	if (!IsVisible() && !showanyway)
 		return;
 
 	if (BackgroundScreen) {
