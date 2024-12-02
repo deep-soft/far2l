@@ -40,7 +40,8 @@ if(GIT_FOUND)
     execute_process(COMMAND "${GIT_EXECUTABLE}" describe --tag
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
         OUTPUT_VARIABLE GIT_TAG
-        OUTPUT_STRIP_TRAILING_WHITESPACE)
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
 endif()
 
 if(NOT "${GIT_TAG}" STREQUAL "v_${VERSION}")
@@ -401,11 +402,6 @@ if (NOT DEFINED MULTIARC OR MULTIARC)
         if(NOT LibArchive_FOUND)
             message(WARNING "${ColorRed}libarchive not found, multiarc will have weaker archives support. Its recommended to install libarchive-dev and reconfigure far2l.${ColorNormal}")
         endif()
-    endif()
-
-    pkg_search_module(PCRE QUIET libpcre)
-    if(NOT PCRE_FOUND)
-        message(WARNING "${ColorRed}libpcre not found, multiarc will have no regexp support in custom archive format descriptions. Install libpcre and reconfigure far2l if you need that functionality.${ColorNormal}")
     endif()
 
     add_subdirectory (multiarc)
