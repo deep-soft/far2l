@@ -166,7 +166,7 @@ jobs:
         tree /opt/homebrew/ | tee tree-opt-homebrew-${{ matrix.job.os }}
 
     - name: Artifacts
-      uses: deep-soft/upload-artifact@v3
+      uses: deep-soft/upload-artifact@v4
       with:
         name: trees
         path: tree*
