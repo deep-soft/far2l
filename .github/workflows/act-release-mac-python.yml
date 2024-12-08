@@ -274,6 +274,8 @@ jobs:
         if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
           mkdir -p /opt/homebrew/opt/samba/lib/
           cp /opt/homebrew/lib/libsmbclient.dylib /opt/homebrew/opt/samba/lib/libsmbclient.inst.dylib
+          ls -la /opt/homebrew/lib/libsmbclient.dylib
+          ls -la /opt/homebrew/opt/samba/lib/libsmbclient.inst.dylib
         fi
 
     - name: Create Build Environment
