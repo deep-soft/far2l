@@ -112,10 +112,16 @@ jobs:
         if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
           brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive tree
         fi
+        if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
+          brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive tree
+        fi
 
     - name: Relink 'keg-only' packages
       run: |
         if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
+          brew link libarchive --force
+        fi
+        if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
           brew link libarchive --force
         fi
 
@@ -143,18 +149,21 @@ jobs:
         if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
           cmake -S . -B _build -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DPYTHON=yes
         fi
+        if [[ ${{ matrix.job.os }} =~ "macos-latest" ]]; then
+          cmake -S . -B _build -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DPYTHON=yes
+        fi
 
     - name: File Tree
       continue-on-error: true
       shell: bash
       run: |
-        tree ${{github.workspace}} | tee tree-far2l
+        tree ${{github.workspace}} | tee tree-far2l-${{ matrix.job.os }}
 
     - name: File Tree
       continue-on-error: true
       shell: bash
       run: |
-        tree /opt/homebrew/ | tee tree-opt-homebrew
+        tree /opt/homebrew/ | tee tree-opt-homebrew-${{ matrix.job.os }}
 
     - name: Artifacts
       uses: deep-soft/upload-artifact@v3
