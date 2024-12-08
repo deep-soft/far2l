@@ -295,16 +295,16 @@ jobs:
         fi
 
     - name: Build
-      # working-directory: ${{github.workspace}}/build
+      working-directory: ${{github.workspace}}/_build
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: |
-        cmake --build _build --config $BUILD_TYPE
+        cmake --build . --config $BUILD_TYPE
 
     - name: Remove extra languages
       if: ${{ inputs.remove_extra_lng }}
       continue-on-error: true
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{github.workspace}}/_build
       shell: bash
       run: |
         #touch 0-all-lng-hlf.txt
@@ -319,7 +319,7 @@ jobs:
         done
 
     - name: Build package
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{github.workspace}}/_build
       shell: bash
       run: |
         cmake --build . --target package
@@ -332,7 +332,7 @@ jobs:
 
     - name: File Tree
       continue-on-error: true
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{github.workspace}}/_build
       shell: bash
       run: tree
 
@@ -340,7 +340,7 @@ jobs:
 #      uses: deep-soft/upload-artifact@v3
 #      with:
 #        name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ matrix.job.name }}
-#        path: ${{github.workspace}}/build/install
+#        path: ${{github.workspace}}/_build/install
 
     - name: Archive Release
       continue-on-error: true
@@ -348,7 +348,7 @@ jobs:
       with:
         type: 'zip'
         filename: '${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.zip'
-        directory: '${{github.workspace}}/build/install'
+        directory: '${{github.workspace}}/_build/install'
         path: '.'
         # exclusions: '*.git* /*node_modules/* .editorconfig'
         exclusions: '*Bel.lng *Rus.lng *Cze.lng *Ger.lng *Hun.lng *Pol.lng *Spa.lng *Ukr.lng *bel.lng *rus.lng *calcb.lng *calcr.lng *colorerb.lng *colorerr.lng *editorcomp_be.lng *editorcomp_ru.lng *isrcrus.lng'
@@ -363,9 +363,9 @@ jobs:
         tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
         files: |
           ${{ env.ZIP_RELEASE_ARCHIVE }}
-          ${{github.workspace}}/build/${{ env.PROG_NAME }}*.deb
-          ${{github.workspace}}/build/${{ env.PROG_NAME }}*.tar.gz
-          ${{github.workspace}}/build/${{ env.PROG_NAME }}*.dmg
+          ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.deb
+          ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.tar.gz
+          ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.dmg
 
     - name: Archive Release - All
       if: ${{ inputs.make_archive_all }}
@@ -393,7 +393,7 @@ jobs:
 
     - name: Test
       if: ${{ inputs.run_tests }}
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{github.workspace}}/_build
       shell: bash
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
