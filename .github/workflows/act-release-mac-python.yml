@@ -329,10 +329,11 @@ jobs:
       working-directory: ${{github.workspace}}/_build
       shell: bash
       run: |
-        cmake --build . --target package
         if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          cmake --build . --target package -DCMAKE_INSTALL_RPATH='@loader_path'
           mv ${{ env.PROG_NAME }}*.dmg    ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.dmg
         else
+          cmake --build . --target package -DCMAKE_INSTALL_RPATH='$ORIGIN'
           mv ${{ env.PROG_NAME }}*.deb    ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.deb
           mv ${{ env.PROG_NAME }}*.tar.gz ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.tar.gz
         fi
