@@ -177,5 +177,5 @@ jobs:
     - name: Artifacts
       uses: deep-soft/upload-artifact@v4
       with:
-        name: trees
+        name: trees-${{ matrix.job.os }}
         path: tree*
