@@ -75,9 +75,10 @@ jobs:
           - { name: "withWX"     , os: ubuntu-latest, dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
           - { name: "noWX"       , os: ubuntu-latest, dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
           - { name: "withPYTHON" , os: ubuntu-latest, dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
-          - { name: "minimal"    , os: macos-12     , dependencies: "-minimal"     , options: ""             }
-          - { name: "withWX"     , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
-          - { name: "noWX"       , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
+          - { name: "macos14"    , os: macos-14     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          # - { name: "minimal"    , os: macos-12     , dependencies: "-minimal"     , options: ""             }
+          # - { name: "withWX"     , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
+          # - { name: "noWX"       , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
           #- { name: "withPYTHON" , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
 
     #if: ${{ matrix.job.name }} != 'withPYTHON' || ${{ inputs.withPYTHON }}
@@ -240,16 +241,6 @@ jobs:
         if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
           sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
         fi
-        if [[ ${{ matrix.job.os }} =~ "macos-12" ]]; then
-          brew bundle -v
-          export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          # brew install libxau tree uchardet xml2 wxwidgets libxi libnfs neon samba libssh libarchive pcre
-          brew reinstall libxau tree
-          brew link libxau --force
-          brew unlink libxau && brew link libxau
-          ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
-        fi
         if [[ ${{ matrix.job.os }} =~ "macos-13" ]]; then
           #brew bundle -v
           #export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig"
@@ -265,6 +256,9 @@ jobs:
           brew unlink libxau && brew link libxau
           ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
         fi
+        if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
+          brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive
+        fi
 
     - name: Relink 'keg-only' packages
       run: |
@@ -275,23 +269,34 @@ jobs:
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
       # We'll use this as our working directory for all subsequent commands
-      run: cmake -E make_directory ${{github.workspace}}/build
+      # Create a separate build directory as working directory for all subsequent commands
+      # cmake -E make_directory ${{github.workspace}}/_build
+      run: |
+        mkdir -p _build
 
     - name: Configure CMake
       # Use a bash shell so we can use the same syntax for environment variable
       # access regardless of the host operating system
       shell: bash
-      working-directory: ${{github.workspace}}/build
+      # working-directory: ${{github.workspace}}/build
       # Note the current convention is to use the -S and -B options here to specify source 
       # and build directories, but this is only available with CMake 3.13 and higher.  
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }}
+      run: |
+        if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
+          # cmake $GITHUB_WORKSPACE -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }}
+          cmake -S . -B _build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }}
+        fi
+        if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
+          cmake -S . -B _build -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DPYTHON=yes
+        fi
 
     - name: Build
-      working-directory: ${{github.workspace}}/build
+      # working-directory: ${{github.workspace}}/build
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
-      run: cmake --build . --config $BUILD_TYPE
+      run: |
+        cmake --build _build --config $BUILD_TYPE
 
     - name: Remove extra languages
       if: ${{ inputs.remove_extra_lng }}
