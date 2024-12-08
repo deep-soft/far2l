@@ -110,7 +110,7 @@ jobs:
           ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
         fi
         if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
-          brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive
+          brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive tree
         fi
 
     - name: Relink 'keg-only' packages
