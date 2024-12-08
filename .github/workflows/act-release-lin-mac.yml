@@ -188,14 +188,17 @@ jobs:
       run: |
         if [[ ${{ matrix.job.name }} != "minimal" ]]; then
           if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
-            extra_plugin_list1='netcfgplugin sqlplugin';
+            # extra_plugin_list1='netcfgplugin sqlplugin';
+            extra_plugin_list1='netcfgplugin';
             extra_plugin_list2='SimpleComment EditWrap';
           else
-            extra_plugin_list1='netcfgplugin sqlplugin processes';
+            # extra_plugin_list1='netcfgplugin sqlplugin processes';
+            extra_plugin_list1='netcfgplugin processes';
             extra_plugin_list2='SimpleComment EditWrap jumpword';
           fi
           if [[ ${{ matrix.job.os }} =~ "macos-13" ]]; then
-            extra_plugin_list1='sqlplugin';
+            # extra_plugin_list1='sqlplugin';
+            extra_plugin_list1='';
             extra_plugin_list2='SimpleComment EditWrap';
           fi
 
