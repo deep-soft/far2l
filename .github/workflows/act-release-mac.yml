@@ -270,11 +270,11 @@ jobs:
       # and build directories, but this is only available with CMake 3.13 and higher.  
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
       # run: cmake $GITHUB_WORKSPACE -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }}
-      run:
+      run: |
         if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
-          cmake -S . -B build -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }}
+          cmake -S . -B build -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
         else
-          cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }}
+          cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
         fi
 
     - name: Build
