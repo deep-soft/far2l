@@ -1,0 +1,24 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3e5923f..2068907 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.new
+@@ -14,6 +14,20 @@ set(ColorRed "${Esc}[1;31m")
+ 
+ include(GNUInstallDirs)
+ 
++# Use correct platform-specific RPATH
++set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
++if (CMAKE_TARGET_OS STREQUAL "linux")
++    set(CMAKE_INSTALL_RPATH "\$ORIGIN")
++elseif (CMAKE_TARGET_OS STREQUAL "android")
++    set(CMAKE_INSTALL_RPATH "\$ORIGIN")
++elseif (CMAKE_TARGET_OS STREQUAL "macosx")
++    set(CMAKE_INSTALL_NAME_DIR "@rpath")
++    set(CMAKE_INSTALL_RPATH "@executable_path;@loader_path")
++elseif (CMAKE_TARGET_OS STREQUAL "ios")
++    set(CMAKE_INSTALL_NAME_DIR "@rpath")
++    set(CMAKE_INSTALL_RPATH "@executable_path;@loader_path")
++endif()
++
+ # just to force reconfigure if packaging/version changed
+ configure_file(${CMAKE_SOURCE_DIR}/packaging/version ${CMAKE_BINARY_DIR}/packaging/version @ONLY)
