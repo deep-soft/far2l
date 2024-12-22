@@ -266,7 +266,9 @@ jobs:
     - name: Relink 'keg-only' packages
       run: |
         if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
-          brew link libarchive --force
+          brew link libarchive --force || true;
+          brew link icu4c --force || true;
+          brew reinstall icu4c@76 || true;
         fi
 
     - name: fix macos libsmbclient.inst.dylib
