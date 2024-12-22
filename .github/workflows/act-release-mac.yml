@@ -250,6 +250,7 @@ jobs:
           brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive;
           echo Relink 'keg-only' packages
           brew link libarchive --force;
+          brew link libsmbclient --force;
         else
           sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
         fi
