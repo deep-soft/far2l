@@ -90,11 +90,11 @@ jobs:
       continue-on-error: true
       shell: bash
       run: |
-        echo before:
-        grep CMAKE_BUILD_WITH_INSTALL_RPATH CMakeLists.txt;
-        git apply bins/cmake-rpath.diff;
-        echo after:
-        grep CMAKE_BUILD_WITH_INSTALL_RPATH CMakeLists.txt;
+        echo "before:";
+        grep "CMAKE_BUILD_WITH_INSTALL_RPATH" CMakeLists.txt || true;
+        git apply bins/cmake-rpath.diff || true;
+        echo "after:" || true;
+        grep CMAKE_BUILD_WITH_INSTALL_RPATH CMakeLists.txt || true;
 
     - name: get os version
       shell: bash
