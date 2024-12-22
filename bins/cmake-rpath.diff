@@ -1,7 +1,7 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index 3e5923f..2068907 100644
 --- a/CMakeLists.txt
-+++ b/CMakeLists.new
++++ b/CMakeLists.txt
 @@ -14,6 +14,20 @@ set(ColorRed "${Esc}[1;31m")
  
  include(GNUInstallDirs)
@@ -22,3 +22,4 @@ index 3e5923f..2068907 100644
 +
  # just to force reconfigure if packaging/version changed
  configure_file(${CMAKE_SOURCE_DIR}/packaging/version ${CMAKE_BINARY_DIR}/packaging/version @ONLY)
+ 
