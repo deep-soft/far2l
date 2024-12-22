@@ -249,9 +249,8 @@ jobs:
           # ls /opt/homebrew/Cellar/libxau/1.0.11/lib/libXau* || true;
           brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive;
           echo Relink 'keg-only' packages
-          brew link libarchive --force;
-          brew link libsmbclient --force;
-          brew link samba --force;
+          brew link libarchive --force || true;
+          brew link samba --force || true;
         else
           sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
         fi
