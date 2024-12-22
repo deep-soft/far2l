@@ -251,6 +251,7 @@ jobs:
           echo Relink 'keg-only' packages
           brew link libarchive --force;
           brew link libsmbclient --force;
+          brew link samba --force;
         else
           sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt)
         fi
