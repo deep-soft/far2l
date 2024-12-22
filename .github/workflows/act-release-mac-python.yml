@@ -83,7 +83,18 @@ jobs:
 
     #if: ${{ matrix.job.name }} != 'withPYTHON' || ${{ inputs.withPYTHON }}
     steps:
-    - uses: deep-soft/checkout@v4
+    - name: Checkout
+      uses: deep-soft/checkout@v4
+
+    - name: patch CMakeLists.txt
+      continue-on-error: true
+      shell: bash
+      run: |
+        echo before:
+        grep CMAKE_BUILD_WITH_INSTALL_RPATH CMakeLists.txt;
+        git apply bins/cmake-rpath.diff;
+        echo after:
+        grep CMAKE_BUILD_WITH_INSTALL_RPATH CMakeLists.txt;
 
     - name: get os version
       shell: bash
@@ -162,26 +173,6 @@ jobs:
       run: |
         bash bins/sed-stuff.sh "_" "${{ inputs.SED_STUFF_PARAMS }}"
 
-# change sprintf with snprintf - NOT working, different parameters
-#    - name: macos sprintf to snprintf
-#      if: ${{ inputs.sprintf }}
-#      continue-on-error: true
-#      shell: bash
-#      run: |
-#        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
-#          echo "macos sprintf to snprintf"
-#          f_found=$(grep -rl --exclude-dir=.git --exclude=Cargo.* --exclude=*.lock "sprintf" . | tr '\r' ' ' | tr '\n' ' ')
-#          if [ ${#f_found} -ge 2 ]; then
-#            #echo "f_found=$f_found";
-#            echo ":f_found:"
-#            printf '@(_%s_)\r\n' $f_found;
-#            $SED_EXE -ibak 's!sprintf!snprintf!g' $f_found;
-#            echo ":f_found_2:"
-#            f_found_2=$(grep -rl --exclude-dir=.git --exclude=Cargo.* --exclude=*.lock "sprintf" . | tr '\r' ' ' | tr '\n' ' ')
-#            printf '@(_%s_)\r\n' $f_found_2;
-#          fi
-#        fi
-
     - name: extra plugins
       if: ${{ inputs.PLUGINS_EXTRA }}
       shell: bash
@@ -201,10 +192,7 @@ jobs:
             extra_plugin_list1='';
             extra_plugin_list2='SimpleComment EditWrap';
           fi
-
-
           # add new extra plugins
-          
           for plug1 in $extra_plugin_list1 ; do
             echo "ExtraPluginS=$plug1";
             git clone --depth 1 https://github.com/deep-soft/far2l-$plug1.git && \
@@ -216,7 +204,6 @@ jobs:
             echo "add_subdirectory($plug1)" >> CMakeLists.txt;
             echo "ExtraPluginF=$plug1";
           done
-          
           for plug2 in $extra_plugin_list2 ; do
             echo "ExtraPluginS=$plug2";
             git clone --depth 1 https://github.com/deep-soft/far2l-$plug2.git && \
