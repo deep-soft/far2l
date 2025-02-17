@@ -5,6 +5,7 @@ add_subdirectory (bootstrap)
 set(SOURCES
 src/farversion.cpp
 src/cache.cpp
+src/chattr.cpp
 src/clipboard.cpp
 src/cmdline.cpp
 src/copy.cpp
@@ -94,6 +95,8 @@ src/console/interf.cpp
 src/console/grabber.cpp
 src/console/lockscrn.cpp
 src/console/palette.cpp
+src/console/farcolorexp.cpp
+src/console/farcolors.cpp
 src/console/savescr.cpp
 src/console/scrbuf.cpp
 src/console/scrobj.cpp
