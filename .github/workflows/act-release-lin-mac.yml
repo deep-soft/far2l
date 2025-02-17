@@ -235,13 +235,11 @@ jobs:
     - name: add dependencies
       shell: bash
       run: |
-        if [[ ${{ matrix.job.os }} =~ "ubuntu-20.04" ]]; then
-          if [[ -f bins/ubuntu-20.04/dependencies.txt ]]; then
-            cp bins/ubuntu-20.04/dependencies.txt dependencies.txt;
-          fi
-          if [[ -f bins/ubuntu-20.04/dependencies-minimal.txt ]]; then
-            cp bins/ubuntu-20.04/dependencies-minimal.txt dependencies-minimal.txt;
-          fi
+        if [[ -f bins/${{ matrix.job.os }}/dependencies.txt ]]; then
+          cp bins/${{ matrix.job.os }}/dependencies.txt dependencies.txt;
+        fi
+        if [[ -f bins/${{ matrix.job.os }}/dependencies-minimal.txt ]]; then
+          cp bins/${{ matrix.job.os }}/dependencies-minimal.txt dependencies-minimal.txt;
         fi
         cp dependencies.txt dependencies-smb-nfs-neon.txt;
         echo "" >> dependencies-smb-nfs-neon.txt;
