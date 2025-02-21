@@ -197,7 +197,7 @@ jobs:
             extra_plugin_list2='SimpleComment EditWrap';
           else
             # extra_plugin_list1='netcfgplugin sqlplugin processes';
-            extra_plugin_list1='netcfgplugin processes';
+            extra_plugin_list1='netcfgplugin sqlplugin processes';
             extra_plugin_list2='SimpleComment EditWrap jumpword';
           fi
           if [[ ${{ matrix.job.os }} =~ "macos-13" ]]; then
