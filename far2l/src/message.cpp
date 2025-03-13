@@ -566,6 +566,24 @@ Messager &FN_NOINLINE ExMessager::AddDup(const wchar_t *v)
 	return *this;
 }
 
+// dumb wrap long string
+Messager &FN_NOINLINE ExMessager::AddDupWrap(const wchar_t *v)
+{
+	size_t maxlen = wcslen(v);
+	if( maxlen <= MAX_WIDTH_MESSAGE )
+		return AddDup(v);
+
+	FARString fs = v;
+	for(size_t chars_pos = 0, chars_len, cells_n; chars_pos < maxlen; chars_pos += chars_len) {
+		cells_n = MAX_WIDTH_MESSAGE;
+		chars_len = StrSizeOfCells(&v[chars_pos], maxlen - chars_pos, cells_n, false);
+		if (cells_n <= 0)
+			break;
+		AddDup( fs.SubStr(chars_pos, chars_len).CPtr() );
+	}
+	return *this;
+}
+
 Messager &FN_NOINLINE ExMessager::AddMultiline(const wchar_t *v, const wchar_t *divs)
 {
 	std::wstring source_str = v;

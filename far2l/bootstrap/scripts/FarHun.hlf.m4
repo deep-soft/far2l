@@ -340,8 +340,8 @@ $ #Panelvezérlő parancsok#
     (a parancssor állapotától függetlenül)            #Ctrl-Shift-Ins#
   A kijelölt fájlok neveit elérési úttal a vágólapra
     másolja (a parancssor állapotától függetlenül)     #Alt-Shift-Ins#
-  A kijelölt fájlok hálózati (UNC) neveit a vágólapra
-    másolja (a parancssor állapotától függetlenül)      #Ctrl-Alt-Ins#
+   A kijelölt fájlok teljes neveit a vágólapra
+    másolja (a parancssor állapotától függetlenül) (*3) #Ctrl-Alt-Ins#
 
   Megjegyzések:
 
@@ -358,10 +358,8 @@ karakterek bevitelére szolgálnak, a karakterek decimális kódjaival.
 
   3. ^<wrap>A #Ctrl-Alt-Ins# billentyűkombináció a következő szabály szerint
 másol szöveget a vágólapra:
-
-     - ^<wrap>hálózati meghajtóknál a fájl hálózati (UNC) nevét másolja ki;
-     - helyi meghajtóknál a fájl helyi nevét másolja ki, a
-~szimbolikus linkjeivel~@HardSymLink@ együtt.
+     ^<wrap>If "Classic hotkey link resolving" option in ~Panel settings~@PanelSettings@
+dialog is enabled, the full name is used with ~symbolic links~@HardSymLink@ expanded.
 
   4. ^<wrap>Ha az #Alt-Shift-Ins# vagy a #Ctrl-Alt-Ins# kombináció
 használatánál a kurzor a #..# nevű elem felett áll, akkor az aktuális mappa
@@ -463,20 +461,21 @@ $ #A parancssor parancsai#
      hanem a találatnak megfelelő fájlokon lépked végig.
 
   Beszúrja a passzív panel aktuális fájlnevét       #Ctrl-Shift-Enter#
+
   Beszúrja az aktív panel fájlnevét, elérési úttal            #Ctrl-F#
   Beszúrja a passzív panel fájlnevét, elérési úttal           #Ctrl-;#
-  Beszúrja az aktív panel hálózati (UNC) fájlnevét        #Ctrl-Alt-F#
-  Beszúrja a passzív panel hálózati (UNC) fájlnevét       #Ctrl-Alt-;#
-
   Beszúrja a bal panel elérési útvonalát                      #Ctrl-[#
   Beszúrja a jobb panel elérési útvonalát                     #Ctrl-]#
-  Beszúrja a bal panel hálózati (UNC) elérési útvonalát   #Ctrl-Alt-[#
-  Beszúrja a jobb panel hálózati (UNC) elérési útvonalát  #Ctrl-Alt-]#
-
   Beszúrja az aktív panel elérési útvonalát             #Ctrl-Shift-[#
   Beszúrja a passzív panel elérési útvonalát            #Ctrl-Shift-]#
-  Beszúrja az aktív panel hálózati (UNC) elérési útját   #Alt-Shift-[#
-  Beszúrja a passzív panel hálózati (UNC) elérési útját  #Alt-Shift-]#
+
+  (*5)
+  Beszúrja az aktív panel fájlnevét, elérési úttal        #Ctrl-Alt-F#
+  Beszúrja a passzív panel fájlnevét, elérési úttal       #Ctrl-Alt-;#
+  Beszúrja a bal panel elérési útvonalát                  #Ctrl-Alt-[#
+  Beszúrja a jobb panel elérési útvonalát                 #Ctrl-Alt-]#
+  Beszúrja az aktív panel elérési útvonalát              #Alt-Shift-[#
+  Beszúrja a passzív panel elérési útvonalát             #Alt-Shift-]#
 
   Megjegyzések:
 
@@ -498,9 +497,11 @@ szerkesztőt is.
 az #Alt-Shift-End# kijelölik a blokkot a parancssorban akkor is, ha a panelek
 be vannak kapcsolva.
 
-  5. ^<wrap>A helyi meghajtókra kiadott "Fájl hálózati (UNC) nevének
-beszúrása" parancs a fájlok helyi nevét illeszti be, elérési útjukkal és
-~szimbolikus linkjeikkel~@HardSymLink@ együtt.
+  5. ^<wrap>The marked key combinations adhere to the following rules:
+     ^<wrap>If "Classic hotkey link resolving" option in ~Panel settings~@PanelSettings@
+dialog is enabled, the full name is used with ~symbolic links~@HardSymLink@ expanded.
+
+
 
     See also ~Special commands~@SpecCmd@.
 
@@ -2212,6 +2213,10 @@ mappákat akkor is név szerint rendezi, ha a fájlokat kiterjesztésük szerint
                           ^<wrap>Lassú hálózatoknál célszerűbb lehet az
 opciót kikapcsolni.
 
+  #Classic hotkey link#     Expand ~symbolic links~@HardSymLink@ when using certain
+  #resolving#               keyboard shortcuts. See ~Panel control commands~@PanelCmd@ and
+                          ~Command line commands~@CmdLineCmd@ for details.
+
   #Oszlopnevek mutatva#     ^<wrap>Megjeleníti a ~fájlpanelek~@FilePanel@
 oszlopainak neveit.
 
@@ -2968,6 +2973,8 @@ műveleteket hajthatunk végre a csoportok listáján, a következő billentyűk
 
   #Enter# vagy #F4#  - Az aktuális kiemelési csoport ~szerkesztése~@HighlightEdit@
 
+  #F3#             - Show for current item file masks after expand all masks groups
+
   #Ctrl-R#         - ^<wrap>Visszaállítja az alapértelmezett kiemelési
 csoportokat
 
@@ -3637,6 +3644,8 @@ To ~highlight~@Highlight@ all archives except "*.rar" #<arc>|*.rar# should be us
  #Del#         - ^<wrap>remove the current group
 
  #Enter#/#F4#    - ^<wrap>edit the current group
+
+ #F3#          - view the current group with wrap long line of masks
 
  #F7#          - ^<wrap>find all groups containing the specified mask
 

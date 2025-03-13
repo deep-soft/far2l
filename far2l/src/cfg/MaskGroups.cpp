@@ -40,12 +40,13 @@ static void ApplyDefaultMaskGroups()
 {
 	static const std::pair<const wchar_t*, const wchar_t*> Sets[]
 	{
-		{ L"arc",    L"*.rar,*.zip,*.[zj],*.[bxg7]z,*.[bg]zip,*.tar,*.t[agbx]z,*.ar[cj],*.r[0-9][0-9],*.a[0-9][0-9],*.bz2,*.cab,*.msi,*.jar,*.lha,*.lzh,"
-				     L"*.ha,*.ac[bei],*.pa[ck],*.rk,*.cpio,*.rpm,*.zoo,*.hqx,*.sit,*.ice,*.uc2,*.ain,*.imp,*.777,*.ufa,*.boa,*.bs[2a],*.sea,*.hpk,*.ddi,"
+		{ L"arc",    L"*.rar,*.zip,*.[zj],*.[7bglx]z,*.[bg]zip,*.tar,*.t[agbx]z,*.ar[cj],*.r[0-9][0-9],*.a[0-9][0-9],*.bz2,*.cab,*.msi,*.jar,*.lha,*.lzh,"
+				     L"*.ha,*.ac[bei],*.pa[ck],*.rk,*.cpio,*.rpm,*.tbz2,*.zoo,*.zst,*.hqx,*.sit,*.ice,*.uc2,*.ain,*.imp,*.777,*.ufa,*.boa,*.bs[2a],*.sea,*.hpk,*.ddi,"
 				     L"*.x2,*.rkv,*.[lw]sz,*.h[ay]p,*.lim,*.sqz,*.chz" },
 		{ L"temp",   L"*.cache,*.temp,*.tmp,*.bak,*.old,*.backup,*.back,temp,temp.*,temporary*" },
 		{ L"tmp",    L"<temp>" },
-		{ L"exec",   L"*.sh,*.pl,*.cmd,*.exe,*.bat,*.com,*.elf,*.run,*.AppImage,*.apk,*.rb" },
+		{ L"exec",   L"*.sh,*.py,*.pl,*.cmd,*.exe,*.bat,*.com,*.elf,*.run,*.AppImage,*.apk,*.rb" },
+		{ L"shared", L"*.dll,*.so,*.dll.*,*.so.*,*.obj,*.o,*.a,*.lib,*.sys,*.pyo,*.vim" },
 		{ L"sound",  L"*.aif,*.cda,*.mid,*.midi,*.mp3,*.mpa,*.ogg,*.wma,*.flac,*.wav,*.ape,*.wv,*.voc,*.669,*.digi,*.amf,*.ams,*.dbm,*.dmf,*.dsm,*.gdm,"
 				     L"*.imf,*.it,*.itg,*.itp,*.j2b,*.mdl,*.med,*.mo3,*.mod,*.mt2,*.mtm,*.okt,*.plm,*.psm,*.ptm,*.s3m,*.sfx,*.stm,*.stp,*.uax,*.ult,*.xm"},
 		{ L"snd",    L"<sound>" },
@@ -57,7 +58,7 @@ static void ApplyDefaultMaskGroups()
                      L"read.me,readme*,*.txt,*.chm,*.hlp,*.doc,*.md,NEWS" },
 		{ L"src",    L"*.c,*.cpp,*.c++,*.h,*.hpp,*.h++,*.asm,*.inc,*.src,*.css,*.glsl,*.lua,*.java,*.php,*.go,*.perl,*.r,*.bas,*.pas,*.jsm,*.qml,"
 					 L"*.js,*.kt,*.sample,*.vs,*.fs,*.fx,*.hlsl,*.fsh,*.vsh,*.pixel,*.vertex,*.fragmentshader,*.fragment,*.vertexshader,"
-					 L"*.ml,*.frag,*.geom,*.vert,*.rs,*.ts,*.jam,*.tcl, *.swift" },
+					 L"*.ml,*.frag,*.geom,*.vert,*.rs,*.ts,*.jam,*.tcl,*.swift" },
 		{ L"3d",     L"*.ma,*.mb,*.opengex,*.ply,*.pov-ray,*.prc,*.step,*.skp,*.stl,*.u3d,*.vrml,*.xaml,*.xgl,*.xvl,*.xvrml,*.x3d,*.3d,*.3df,*.3dm,*.3ds,"
 					 L"*.3dxml,*.x3d,*.dds,*.sdkmesh,*.x,*.hdr,*.ktx,*.amf,*.asymptote,*.blend,*.collada,*.dgn,*.dwf,*.dwg,*.dxf,*.drawings,*.flt,*.fvrml,"
 					 L"*.gltf,*.hsf,*.iges,*.imml,*.ipa,*.jt"},
@@ -258,6 +259,22 @@ void MaskGroupsSettings()
 				case KEY_INS:
 					if (bFilter) break;
 					MenuModified = EditMaskRecord(MenuPos < 0 ? 0 : MenuPos, true);
+					break;
+
+				case KEY_F3:
+					if (MenuPos != -1) { // view the current group with wrap long line of masks
+						ConfigReader cfg_reader;
+						cfg_reader.SelectSectionFmt(FMS.TypeFmt, MenuPos);
+
+						FARString strTitle;
+						strTitle = Msg::MaskGroupTitle;
+						strTitle.AppendFormat(L" \"%ls\"", cfg_reader.GetString(FMS.MaskName).CPtr());
+
+						ExMessager em(strTitle);
+						em.AddDupWrap(cfg_reader.GetString(FMS.MaskValue));
+						em.AddDup(Msg::Ok);
+						em.Show(MSG_LEFTALIGN, 1);
+					}
 					break;
 
 				case KEY_NUMENTER:
