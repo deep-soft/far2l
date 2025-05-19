@@ -1,0 +1,16 @@
+cmake
+g++
+pkg-config
+
+libwxgtk3.2-dev
+libx11-dev
+libxi-dev
+
+libuchardet-dev
+libxml2-dev
+
+libarchive-dev
+libssh-dev
+
+python3-dev
+python3-cffi
