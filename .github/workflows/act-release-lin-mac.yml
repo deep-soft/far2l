@@ -67,10 +67,10 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - { name: "minimal"    , os: ubuntu-20.04 , dependencies: "-minimal"     , options: ""             }
-          - { name: "withWX"     , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
-          - { name: "noWX"       , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
-          - { name: "withPYTHON" , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          # - { name: "minimal"    , os: ubuntu-20.04 , dependencies: "-minimal"     , options: ""             }
+          # - { name: "withWX"     , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
+          # - { name: "noWX"       , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
+          # - { name: "withPYTHON" , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
           - { name: "minimal"    , os: ubuntu-22.04 , dependencies: "-minimal"     , options: ""             }
           - { name: "withWX"     , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
           - { name: "noWX"       , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
