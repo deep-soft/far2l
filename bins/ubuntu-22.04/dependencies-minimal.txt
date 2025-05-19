@@ -1,2 +1,3 @@
+libwxgtk3.0-dev
 libuchardet-dev
 libxml2-dev
