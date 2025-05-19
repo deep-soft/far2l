@@ -71,14 +71,17 @@ jobs:
           # - { name: "withWX"     , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
           # - { name: "noWX"       , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
           # - { name: "withPYTHON" , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          # - { name: "noWXwPY"    , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no -DPYTHON=yes"   }
           - { name: "minimal"    , os: ubuntu-22.04 , dependencies: "-minimal"     , options: ""             }
           - { name: "withWX"     , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
           - { name: "noWX"       , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
           - { name: "withPYTHON" , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          - { name: "noWXwPY"    , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no -DPYTHON=yes"   }
           - { name: "minimal"    , os: ubuntu-24.04 , dependencies: "-minimal"     , options: ""             }
           - { name: "withWX"     , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
           - { name: "noWX"       , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
           - { name: "withPYTHON" , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          - { name: "noWXwPY"    , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no -DPYTHON=yes"   }
           # - { name: "macos14"    , os: macos-14     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
           # - { name: "minimal"    , os: macos-12     , dependencies: "-minimal"     , options: ""             }
           # - { name: "withWX"     , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
@@ -241,7 +244,13 @@ jobs:
         if [[ -f bins/${{ matrix.job.os }}/dependencies-minimal.txt ]]; then
           cp bins/${{ matrix.job.os }}/dependencies-minimal.txt dependencies-minimal.txt;
         fi
+        if [[ -f bins/${{ matrix.job.os }}/dependencies-nowx.txt ]]; then
+          cp bins/${{ matrix.job.os }}/dependencies-nowx.txt dependencies-nowx.txt;
+        fi
         cp dependencies.txt dependencies-smb-nfs-neon.txt;
+        if [[ ${{ matrix.job.name }} =~ "noWXwPY" ]]; then
+          cp dependencies-nowx.txt dependencies-smb-nfs-neon.txt;
+        fi
         echo "" >> dependencies-smb-nfs-neon.txt;
         echo "libsmbclient-dev" >> dependencies-smb-nfs-neon.txt;
         echo "libnfs-dev" >> dependencies-smb-nfs-neon.txt;
