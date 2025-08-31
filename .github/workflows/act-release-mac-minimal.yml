@@ -1,5 +1,5 @@
 # 2024-12-22 23:40
-name: act-Release -Mac
+name: act-Release -Mac -minimal
 
 on:
 #  push
