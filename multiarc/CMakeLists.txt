@@ -53,6 +53,7 @@ set(SOURCES
         src/formats/7z/C/LzmaDec.c
         src/formats/7z/C/LzmaEnc.c
         src/formats/7z/C/LzmaLib.c
+        src/formats/7z/C/Md5.c
         src/formats/7z/C/MtCoder.c
         src/formats/7z/C/MtDec.c
         src/formats/7z/C/Ppmd7aDec.c
@@ -66,6 +67,9 @@ set(SOURCES
         src/formats/7z/C/Sha1Opt.c
         src/formats/7z/C/Sha256.c
         src/formats/7z/C/Sha256Opt.c
+        src/formats/7z/C/Sha3.c
+        src/formats/7z/C/Sha512.c
+        src/formats/7z/C/Sha512Opt.c
         src/formats/7z/C/Sort.c
         src/formats/7z/C/SwapBytes.c
         src/formats/7z/C/Threads.c
@@ -153,6 +157,7 @@ elseif(UNRAR)
         src/formats/rar/unrar/rdwrfn.cpp
         src/formats/rar/unrar/rarpch.cpp
         src/formats/rar/unrar/rar.cpp
+        src/formats/rar/unrar/largepage.cpp
     )
     set(SOURCES ${SOURCES} ${RAR_FILES})
 endif()
