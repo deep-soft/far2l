@@ -295,6 +295,28 @@ HAbort
 "Перер&вати"
 "Перап&ыніць"
 
+HExecute
+"&Выполнить"
+"&Execute"
+"&Vykonat"
+"&Ausführen"
+"&Végrehajtás"
+"&Wykonać"
+"&Ejecutar"
+"&Виконати"
+"&Выканаць"
+
+HExecuteNoAsk
+"Выполнить &и больше не спрашивать в этой сессии"
+"Execute &and don’t ask again this session"
+"Spustit &a už se neptat v této relaci"
+"Ausführen &und in dieser Sitzung nicht mehr fragen"
+"Végrehajtás, &ne kérdezze újra a munkamenetben"
+"Wykonaj &i nie pytaj więcej w tej sesji"
+"Ejecutar y &no preguntar más en esta sesión"
+"Виконати &і більше не питати в цій сесії"
+"Выканаць &і больш не пытаць у гэтай сесіі"
+
 HIgnore
 "&Игнорировать"
 "&Ignore"
@@ -461,6 +483,28 @@ upd:"Background terminal commands [F3]"
 upd:"Background terminal commands [F3]"
 "Фонові команди терміналу [F3]"
 "Фонавыя каманды тэрмінала [F3]"
+
+MultilinePaste
+"Вставка нескольких строк"
+"Multiline paste"
+"Vložení více řádků"
+"Mehrzeilen-Einfügen"
+"Többsoros beillesztés"
+"Wklejanie wielowierszowe"
+"Pegar múltiple"
+"Вставка багаторядкового тексту"
+"Устаўка шматрадковага тэксту"
+
+MultilinePasteWarn
+"Вставка многострочных команд сразу запустит их,\n обернув текущим содержанием командной строки."
+"Pasting multiline commands will immediately run them,\n wrapping with the current command line content."
+"Vložení víceradkových příkazů je ihned spustí\n a obalí aktuálním obsahem příkazového řádku."
+"Das Einfügen mehrzeiliger Befehle führt sie sofort aus\n und umschließt sie mit dem aktuellen Inhalt der Befehlszeile."
+"A többsoros parancsok beillesztése azonnal lefut,\n a parancssor aktuális tartalmával körbevéve."
+"Wklejenie wielowierszowych poleceń natychmiast je uruchomi,\n obejmując bieżącą zawartością wiersza poleceń."
+"Pegar comandos multilínea los ejecutará de inmediato,\n envolviéndolos con el contenido actual de la línea de comandos."
+"Вставка багаторядкових команд одразу їх запустить,\n обгорнувши поточним вмістом командного рядка."
+"Устаўка шматрадковых каманд адразу іх выканае,\n абгарнуўшы бягучым зместам каманднага радка."
 
 F1
 l:
@@ -2366,23 +2410,23 @@ ConfigShowSortMode
 
 ConfigPanelHighlightMarksButton
 "Раскраска файлов - Маркировка"
-"Highlight files - Marking"   
-"Zvýrazňovat soubory - Označení"  
+"Highlight files - Marking"
+"Zvýrazňovat soubory - Označení"
 "Dateien markieren - Markierung"
-"Fájlok kiemelése - Jelzés"    
+"Fájlok kiemelése - Jelzés"
 "Wyróżniaj pliki - Cechowanie"
-"Resaltar archivos - Marcado"   
+"Resaltar archivos - Marcado"
 "Розфарбовка файлів - Маркування"
 "Размалёўка файлаў - Маркіроўка"
 
 ConfigPanelHighlightMarksTitle
 "Настройки панели - Раскраска файлов - Маркировка"
-"Panel settings - Highlight files - Marking"   
-"Nastavení panelů - Zvýrazňovat soubory - Označení"  
+"Panel settings - Highlight files - Marking"
+"Nastavení panelů - Zvýrazňovat soubory - Označení"
 "Panels einrichten - Dateien markieren - Markierung"
-"Panel beállítások - Fájlok kiemelése - Jelzés"    
+"Panel beállítások - Fájlok kiemelése - Jelzés"
 "Ustawienia panelu - Wyróżniaj pliki - Cechowanie"
-"Configuración de paneles - Resaltar archivos - Marcado"   
+"Configuración de paneles - Resaltar archivos - Marcado"
 "Налаштування панели - Розфарбовка файлів - Маркування"
 "Налады стужкі - Размалёўка файлаў - Маркіроўка"
 
@@ -3132,9 +3176,20 @@ ConfigDialogsMouseButton
 "Dial&og schließen wenn Mausklick ausserhalb"
 "&Egérkattintás a párb.ablakon kívül: bezárja"
 "&Kliknięcie myszy poza oknem zamyka je"
-"Click en ratón afuera del diálogo lo cierra"
+"&Click en ratón afuera del diálogo lo cierra"
 "Клік миши &поза діалогом закриває діалог"
-"Пстрычка мышы за межамі гутаркі зачыне гутарку"
+"Пстрычка &мышы за межамі гутаркі зачыне гутарку"
+
+ConfigDialogsShowArrowsInEdit
+"Показывать &символы » « при переполнении поля ввода"
+"&Show » « symbols when edit text overflows"
+"&Zobrazit symboly » « při přetečení textu pole"
+"» « &Symbole bei Überlauf des Eingabefelds anzeigen"
+"» « &jelek mutatása, ha a beviteli mező túlcsordul"
+"&Pokazywać symbole » « przy przepełnieniu pola edycji"
+"Mostrar &símbolos » « al desbordar el texto del cuadro de edición"
+"Показувати &символи » « при переповненні поля вводу"
+"&Паказваць сімвалы » « пры перапаўненні поля ўводу"
 
 ConfigVMenuTitle
 l:
@@ -3282,15 +3337,15 @@ upd:"Command &output splitter"
 "&Раздзяляльнік вываду каманд"
 
 ConfigCmdlineVTLogLimit
-"Максимум строк в &логе вывода:"
-"Maximum terminal &log lines:"
-upd:"Maximum terminal &log lines:"
-upd:"Maximum terminal &log lines:"
-upd:"Maximum terminal &log lines:"
-upd:"Maximum terminal &log lines:"
-upd:"Maximum terminal &log lines:"
-"Максимум рядків &логії виводу:"
-"Максімум радкоў &логу вываду:"
+"Лимит размера &лога вывода (КБ):"
+"Terminal &log size limit (KB):"
+upd:"Terminal &log size limit (KB):"
+upd:"Terminal &log size limit (KB):"
+upd:"Terminal &log size limit (KB):"
+upd:"Terminal &log size limit (KB):"
+upd:"Terminal &log size limit (KB):"
+"Ліміт розміру &логу виводу (КБ):"
+"Ліміт памеру &лога вываду (КБ):"
 
 ConfigCmdlineWaitKeypress
 "&Ожидать нажатие перед закрытием"
@@ -17981,6 +18036,17 @@ upd:"Selected highlighted default button"
 "Вибрана кнопка за замовчуванням"
 "Абраная афарбаваная прадвызначаная кнопка"
 
+SetColorDialogOverflowArrow
+"Стрелка переполнения"
+"Overflow Arrow"
+"Šipka přetečení"
+"Überlaufpfeil"
+"Túlcsordulás nyíl"
+"Strzałka przepełnienia"
+"Flecha de desbordamiento"
+"Стрілка переповнення"
+"Стрелка перапоўнення"
+
 SetColorDialogListBoxControl
 "Список"
 "List box"
@@ -18290,6 +18356,50 @@ SetColorMenuArrowsDisabled
 "Deshabilitar indicadores de cadena largos"
 "Блоковані індикатори довгих рядків"
 "Забароненыя паказальнікі доўгіх радкоў"
+
+SetColorMenuPrefix
+"Префикс"
+"Prefix"
+"Předpona"
+"Präfix"
+"Előtag"
+"Prefiks"
+"Prefijo"
+"Префікс"
+"Прафікс"
+
+SetColorMenuPrefixSelected
+"Выбранный префикс"
+"Selected prefix"
+"Vybraný prefix"
+"Ausgewähltes Präfix"
+"Kiválasztott előtag"
+"Wybrany prefiks"
+"Prefijo seleccionado"
+"Обраний префікс"
+"Абраны прафікс"
+
+SetColorDialogListPrefix
+"Префикс"
+"Prefix"
+"Předpona"
+"Präfix"
+"Előtag"
+"Prefiks"
+"Prefijo"
+"Префікс"
+"Прафікс"
+
+SetColorDialogListPrefixSelected
+"Выбранный префикс"
+"Selected prefix"
+"Vybraný prefix"
+"Ausgewähltes Präfix"
+"Kiválasztott előtag"
+"Wybrany prefiks"
+"Prefijo seleccionado"
+"Обраний префікс"
+"Абраны прафікс"
 
 SetColorHMenuNormal
 l:

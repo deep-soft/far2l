@@ -5,11 +5,13 @@ Only significant user-side changes are listed here
 or via `git log --no-merges --pretty=format:"%as: %B"`).
 
 ## Master (current development)
+* Far2l internal virtual terminal: Now the original output of applications is preserved. The Far2l VT window applies dynamic formatting with correct line wrapping. Operations such as F3/F4 and copy/paste use the original, unwrapped lines.
 * _New:_ new debug dump functionality (see [DUMPER.md](https://github.com/elfmz/far2l/blob/master/DUMPER.md))
 * _New:_ far2l-cd.sh wrapper to enable external directory change to far2l's when it exit ([#2758](https://github.com/elfmz/far2l/issues/2758))
 * _New:_ '$z' command prompt variable that returns the "{current git branch} " string; an empty string otherwise
 * _New:_ Separate icons for WX versions of far2l and far2ledit
 * _New:_ far:config as "Configuration editor" and far:about as "About FAR" in Commands menu
+* _New:_ support (and warning) for pasting and executing multiline text in command line
 * Editor: Display of various non-printable characters on **F5** (ShwSpc)
 * Workaround for wxWigets Numeric Keypad regression in wxWidgets 3.2.7 only ([#2721](https://github.com/elfmz/far2l/issues/2721))
 * Actions recorded in commands history are configured in the AutoComplete & History dialog
@@ -29,6 +31,8 @@ or via `git log --no-merges --pretty=format:"%as: %B"`).
   (now as experimental version which partially more effective then multiarc;
   arclite disabled by default, to enable manually turn on
   F9->Options->Plugins configuration->ArcLite->[x] Enable Arclite plugin)
+* _hexitor plugin_: Hex editor (ported from far3) + preliminary support for viewing and editing UTF-8 characters
+* _OpenWith plugin_: New plugin provides a context-aware menu to open the currently selected file with an appropriate application
 * Several bugfixes
 
 ## 2.6.5 beta (2025-03-30)

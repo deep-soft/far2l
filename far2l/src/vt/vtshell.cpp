@@ -33,7 +33,6 @@
 #include "vtshell_compose.h"
 #include "vtshell_ioreaders.h"
 #include "vtshell_mouse.h"
-#include "../WinPort/src/SavedScreen.h"
 #define __USE_BSD
 #include <termios.h>
 #include "farcolors.hpp"
@@ -131,6 +130,7 @@ class VTShell : VTOutputReader::IProcessor, VTInputReader::IProcessor, IVTShell
 	unsigned int _exit_code;
 	bool _may_notify{false};
 	std::atomic<bool> _allow_osc_clipset{false};
+	std::atomic<bool> _alternate_mode{false};
 	std::string _init_user_profile;
 
 	int ExecLeaderProcess()
@@ -366,6 +366,11 @@ class VTShell : VTOutputReader::IProcessor, VTInputReader::IProcessor, IVTShell
 			UpdateTerminalSize(_fd_out);
 		if (_far2l_exts)
 			_far2l_exts->OnTerminalResized();
+	}
+
+	virtual void OnScreenModeChanged(bool alternate_mode)
+	{
+		_alternate_mode = alternate_mode;
 	}
 
 	virtual void OnInputResized(const INPUT_RECORD &ir) //called from worker thread
@@ -692,12 +697,34 @@ class VTShell : VTOutputReader::IProcessor, VTInputReader::IProcessor, IVTShell
 
 	void OnOSC_ClipboardSet(std::string &str)
 	{
-		StrTrim(str, "; \t");
+		// OSC 52 format is: <clipboard_selector>;<data>
+		// We expect 'c' for system clipboard.
+		// A '?' as data is a query request. For security reasons, we do not
+		// implement reading the clipboard, but we must ignore the request
+		// gracefully instead of erasing the clipboard.
+
+		// remove "c;" prefix if any
+		size_t pos = str.rfind(';');
+		if (pos == std::string::npos) {
+			// Malformed command, ignore.
+			return;
+		}
+
+		std::string payload = str.substr(pos + 1);
+		StrTrim(payload, " \t"); // Trim whitespace from payload
+
+		if (payload == "?") {
+			// It's a query request. Intentionally not supported for security.
+			// Just ignore it to prevent erasing the clipboard.
+			fprintf(stderr, "VT: OSC 52 clipboard read request ('?') ignored for security reasons.\n");
+			return;
+		}
+
 		if (!_allow_osc_clipset) {
 			{
 				VTAnsiSuspend vta_suspend(_vta); // preserve console state
 				std::lock_guard<std::mutex> lock(_read_state_mutex); // stop input readout
-				SavedScreen saved_scr;
+				ConsoleForkScope saved_scr(NULL);
 				ScrBuf.FillBuf();
 				int choice;
 				do { // prevent quick thoughtless tap Enter or Space or Esc in dialog
@@ -719,15 +746,10 @@ class VTShell : VTOutputReader::IProcessor, VTInputReader::IProcessor, IVTShell
 			OnTerminalResized(); // window could resize during dialog box processing
 		}
 
-		// remove "c;" prefix if any
-		size_t pos = str.rfind(';');
-		if (pos != std::string::npos) {
-			str.erase(0, pos + 1);
-		}
-
 		std::vector<unsigned char> plain;
-		base64_decode(plain, str);
+		base64_decode(plain, payload); // Use payload instead of the original str
 		{ // release no more needed memory
+			std::string().swap(payload);
 			std::string().swap(str);
 		}
 		std::wstring ws;
@@ -1042,12 +1064,10 @@ class VTShell : VTOutputReader::IProcessor, VTInputReader::IProcessor, IVTShell
 		VT_ComposeMarker(_start_marker);
 		VT_ComposeMarker(_exit_marker);
 		_exit_marker+= ':';
-
 		_vta.OnStart();
 		if (!ExecuteCommandBegin(cd, cmd, force_sudo)) {
 			_exit_code = -1;
 		}
-
 		return ExecuteCommandCommonTail(may_bgnd);
 	}
 
@@ -1055,7 +1075,7 @@ class VTShell : VTOutputReader::IProcessor, VTInputReader::IProcessor, IVTShell
 	{
 		StopIOReaders();
 		VTLog::ConsoleJoined(_console_handle);
-		WINPORT(JoinConsole)(_console_handle);
+		WINPORT(JoinConsole)(NULL, _console_handle);
 		_console_handle = NULL;
 		OnTerminalResized();
 		_vta.OnReattached();
@@ -1087,7 +1107,7 @@ class VTShell : VTOutputReader::IProcessor, VTInputReader::IProcessor, IVTShell
 			if (may_bgnd) {
 				_vta.OnDetached();
 				DeliverPendingWindowInfo();
-				_console_handle = WINPORT(ForkConsole)();//CommandTerminated
+				_console_handle = WINPORT(ForkConsole)(NULL);//CommandTerminated
 				PrintNoticeOnPrimaryConsole(Msg::CommandBackgrounded);
 				StartIOReaders();
 				return false;
@@ -1149,9 +1169,14 @@ class VTShell : VTOutputReader::IProcessor, VTInputReader::IProcessor, IVTShell
 		return _vta.GetTitle();
 	}
 
-	bool IsDone()
+	bool IsExited() const
 	{
 		return _exit_marker.empty();
+	}
+
+	bool IsAlternateMode() const
+	{
+		return _alternate_mode;
 	}
 };
 
@@ -1200,7 +1225,6 @@ int VTShell_Execute(const char *cmd, bool need_sudo, bool may_bgnd, bool may_not
 		fprintf(stderr, "%s('%s') - not owner\n", __FUNCTION__, cmd);
 		return -1;
 	}
-
 	if (g_vt && !g_vt->CheckLeaderAlive()) {
 		g_vt.reset();
 	}
@@ -1243,20 +1267,44 @@ void VTShell_Shutdown()
 
 bool VTShell_Busy()
 {
-	return g_vt_busy != 0;
+	return (g_vt_busy != 0);
 }
 
 void VTShell_Enum(VTInfos &vts)
 {
 	std::lock_guard<std::mutex> lock(g_vts_mutex);
 	for (const auto &vt : g_vts) {
-		vts.emplace_back();
-		auto &vti = vts.back();
+		auto &vti = vts.emplace_back();
 		vti.con_hnd = vt->ConsoleHandle();
 		vti.title = vt->GetTitle();
-		vti.done = vt->IsDone();
+		vti.exited = vt->IsExited();
 		vti.exit_code = vt->CommandExitCode();
 	}
+}
+
+static VTState VTShell_StateOf(VTShell &vt)
+{
+	if (vt.IsExited()) {
+		return VT_EXITED;
+	}
+	if (vt.IsAlternateMode()) {
+		return VT_ALTERNATE_SCREEN;
+	}
+	return VT_NORMAL_SCREEN;
+}
+
+VTState VTShell_LookupState(HANDLE hConsole)
+{
+	std::lock_guard<std::mutex> lock(g_vts_mutex);
+	if (g_vt && hConsole == g_vt->ConsoleHandle()) {
+		return VTShell_StateOf(*g_vt);
+	}
+	for (const auto &vt : g_vts) {
+		if (hConsole == vt->ConsoleHandle()) {
+			return VTShell_StateOf(*vt);
+		}
+	}
+	return VT_INVALID;
 }
 
 size_t VTShell_Count()

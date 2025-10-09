@@ -125,6 +125,8 @@ void FarAbout(PluginManager &Plugins)
 	ListAbout.AddItem(fs); fs2copy += "\n" + fs;
 	fs.Format(L"    ConsoleColorPalette: %u", WINPORT(GetConsoleColorPalette)(NULL) );
 	ListAbout.AddItem(fs); fs2copy += "\n" + fs;
+	fs.Format(L" Win size in char cells: %ux%u", ScrX, ScrY );
+	ListAbout.AddItem(fs); fs2copy += "\n" + fs;
 	fs.Format(L"                  Admin: %ls", Opt.IsUserAdmin ? Msg::FarTitleAddonsAdmin : L"-");
 	ListAbout.AddItem(fs); fs2copy += "\n" + fs;
 	//apiGetEnvironmentVariable("FARPID", fs2);
@@ -194,7 +196,8 @@ void FarAbout(PluginManager &Plugins)
 		"TERM", "COLORTERM",
 		"GDK_BACKEND", "DESKTOP_SESSION",
 		"WSL_DISTRO_NAME", "WSL2_GUI_APPS_ENABLED",
-		"DISPLAY", "WAYLAND_DISPLAY" };
+		"DISPLAY", "WAYLAND_DISPLAY",
+		"GTK_IM_MODULE", "QT_IM_MODULE", "XMODIFIERS" };
 	for (unsigned int i = 0; i < ARRAYSIZE(env_vars); i++) {
 		fs.Format(L"%23s: ", env_vars[i]);
 		if (apiGetEnvironmentVariable(env_vars[i], fs2)) {

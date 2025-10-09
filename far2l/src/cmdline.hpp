@@ -58,7 +58,7 @@ class CommandLine : public ScreenObject
 {
 private:
 	EditControl CmdStr;
-	SaveScreen *BackgroundScreen;
+	ConsoleForkScope BackgroundConsole;
 	FARString strCurDir;
 	FARString strLastCmdStr;
 	FARString strLastCompletionCmdStr;
@@ -95,7 +95,6 @@ public:
 	virtual int64_t VMProcess(MacroOpcode OpCode, void *vParam = nullptr, int64_t iParam = 0);
 
 	virtual void Show();
-	virtual void ResizeConsole();
 
 	std::string GetConsoleLog(HANDLE con_hnd, bool colored);
 	int GetCurDir(FARString &strCurDir);
@@ -128,10 +127,8 @@ public:
 	void GetSelection(int &Start, int &End) { CmdStr.GetSelection(Start, End); };
 	void Select(int Start, int End) { CmdStr.Select(Start, End); };
 
-	void SaveBackground(int X1, int Y1, int X2, int Y2);
 	void SaveBackground();
 	void ShowBackground(bool showanyway = false);
-	void CorrectRealScreenCoord();
 	void LockUpdatePanel(int Mode) { Flags.Change(FCMDOBJ_LOCKUPDATEPANEL, Mode); };
 
 	void EnableAC() { return CmdStr.EnableAC(); }
@@ -140,7 +137,7 @@ public:
 
 	void RedrawWithoutComboBoxMark();
 
-	const CHAR_INFO *GetBackgroundScreen(int &W, int &H);
+	HANDLE GetBackgroundConsole();
 };
 
 struct CmdLineVisibleScope
