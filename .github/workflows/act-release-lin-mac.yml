@@ -189,6 +189,13 @@ jobs:
 #          fi
 #        fi
 
+    - name: extra scripts
+      shell: bash
+      run: |
+        if [ -d bins/extra-scripts ]; then
+          cp bins/extra-scripts/*.sh far2l/bootstrap;
+        fi
+      
     - name: extra plugins
       if: ${{ inputs.PLUGINS_EXTRA }}
       shell: bash
@@ -418,3 +425,4 @@ jobs:
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C $BUILD_TYPE
+
