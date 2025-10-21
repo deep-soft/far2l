@@ -1638,7 +1638,7 @@ void WinPortPanel::OnChar( wxKeyEvent& event )
 		// See also: https://github.com/wxWidgets/wxWidgets/issues/25379
 
 		const wxKeyEvent& last_keydown = _key_tracker.LastKeydown();
-		if (event.GetKeyCode() == 0 || event.GetTimestamp() != last_keydown.GetTimestamp())
+		if (event.GetRawKeyCode() == 0 || event.GetTimestamp() != last_keydown.GetTimestamp())
 		{
 			// Likely an IME-generated event or a desynchronized event. Use the safe fallback.
 			ir.Event.KeyEvent.wVirtualKeyCode = VK_NONAME;
@@ -1648,6 +1648,9 @@ void WinPortPanel::OnChar( wxKeyEvent& event )
 			// The event seems to be a direct result of a key press.
 			// Use the new logic to get a more precise virtual key code.
 			ir.Event.KeyEvent.wVirtualKeyCode = wxKeyCode2WinKeyCode(last_keydown.GetKeyCode());
+			if (ir.Event.KeyEvent.wVirtualKeyCode == 0 && event.GetKeyCode() == 0) {
+				ir.Event.KeyEvent.wVirtualKeyCode = VK_NONAME;
+			}
 		}
 		
 		if (event.GetUnicodeKey() <= 0x7f) { 
