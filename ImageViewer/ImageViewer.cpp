@@ -19,7 +19,7 @@ static FarStandardFunctions g_fsf;
 
 struct ViewerData
 {
-	std::string initial_file, cur_file;
+	std::string initial_file, cur_file, render_file, tmp_file;
 	std::set<std::string> selection, all_files;
 	COORD pos{}, size{};
 	bool exited_by_enter{false};
@@ -63,20 +63,87 @@ struct ViewerData
 	}
 };
 
+static bool InspectFileFormat(struct ViewerData *data)
+{
+	data->render_file = data->cur_file;
 
+	struct stat st {};
+	if (stat(data->cur_file.c_str(), &st) == -1) {
+		return false;
+	}
+
+	if (!S_ISREG(st.st_mode) || st.st_size == 0) {
+		return false;
+	}
+
+	if (!StrEndsBy(data->cur_file, ".mp4")
+		&& !StrEndsBy(data->cur_file, ".mpg")
+		&& !StrEndsBy(data->cur_file, ".avi")
+		&& !StrEndsBy(data->cur_file, ".flv")
+		&& !StrEndsBy(data->cur_file, ".mov")
+		&& !StrEndsBy(data->cur_file, ".wmv")
+		&& !StrEndsBy(data->cur_file, ".mkv"))
+	{
+		return true;
+	}
+
+	std::string cmd = StrPrintf(
+		"ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 '%s'",
+		data->cur_file.c_str());
+
+	std::string frames_count;
+	if (!POpen(frames_count, cmd.c_str())) {
+		fprintf(stderr, "ERROR: ffprobe failed.\n");
+		return false;
+	}
+	fprintf(stderr, "\n--- ImageViewer: frames_count=%s from %s\n", frames_count.c_str(), cmd.c_str());
+
+	unsigned int frames_interval = atoi(frames_count.c_str()) / 6;
+	if (frames_interval < 5) frames_interval = 5;
+
+	if (data->tmp_file.empty()) {
+		wchar_t preview_tmp[MAX_PATH + 32]{};
+		g_fsf.MkTemp(preview_tmp, MAX_PATH, L"far2l-img");
+		wcscat(preview_tmp, L".jpg");
+		data->tmp_file = StrWide2MB(preview_tmp);
+	}
+
+	unlink(data->tmp_file.c_str());
+
+	cmd = StrPrintf("ffmpeg -i '%s' -vf \"select='not(mod(n,%d))',scale=200:-1,tile=3x2\" '%s'",
+		data->cur_file.c_str(), frames_interval, data->tmp_file.c_str());
+
+	int r = system(cmd.c_str());
+	fprintf(stderr, "\n--- ImageViewer: r=%d from %s\n", r, cmd.c_str());
+
+	if (stat(data->tmp_file.c_str(), &st) == -1 || st.st_size == 0) {
+		unlink(data->tmp_file.c_str());
+		return false;
+	}
+
+	data->render_file = data->tmp_file;
+	return true;
+}
 
 static bool LoadAndShowImage(struct ViewerData *data)
 {
 	fprintf(stderr, "\n--- ImageViewer: Starting image processing for '%s' ---\n", data->cur_file.c_str());
+
+	if (data->render_file.empty()) {
+		fprintf(stderr, "ERROR: bad file.\n");
+		return false;
+	}
+
 	fprintf(stderr, "Target cell grid pos=%dx%d size=%dx%d\n", data->pos.X, data->pos.Y, data->size.X, data->size.Y);
 	if (data->pos.X < 0 || data->pos.Y < 0 || data->size.X <= 0 || data->size.Y <= 0) {
 		fprintf(stderr, "ERROR: bad grid.\n");
 		return false;
 	}
 
+
 	// 1. Получаем оригинальные размеры картинки
 	std::string cmd = "identify -format \"%w %h\" \"";
-	cmd += data->cur_file;
+	cmd += data->render_file;
 	cmd += "\"";
 
 	std::string dims_str;
@@ -114,7 +181,7 @@ static bool LoadAndShowImage(struct ViewerData *data)
 		cmd += "timeout 3 "; // workaround for stuck on too huge images
 	}
 	cmd += "convert \"";
-	cmd += data->cur_file;
+	cmd += data->render_file;
 	cmd += "\" -background black -gravity Center";
 
 	if (data->dx != 0 || data->dy != 0) {
@@ -195,7 +262,7 @@ static LONG_PTR WINAPI ViewerDlgProc(HANDLE hDlg, int Msg, int Param1, LONG_PTR 
 			data->size.Y = Rect.Bottom > 1 ? Rect.Bottom - 1 : 1;
 
 			UpdateDialogTitle(hDlg, data);
-			bool ok = LoadAndShowImage(data);
+			bool ok = InspectFileFormat(data) && LoadAndShowImage(data);
 			if (!ok) {
 				std::wstring ws_cur_file = StrMB2Wide(data->cur_file);
 				const wchar_t *MsgItems[]={L"Image Viewer", L"Failed to load image file:", ws_cur_file.c_str()};
@@ -249,14 +316,14 @@ static LONG_PTR WINAPI ViewerDlgProc(HANDLE hDlg, int Msg, int Param1, LONG_PTR 
 				if (data->dy > -100) data->dy-= 10;
 				LoadAndShowImage(data);
 
-			} else if (Key == KEY_ADD) {
+			} else if (Key == KEY_ADD || Key == '+') {
 				if (data->scale < 400) {
 					if (data->scale < 200) data->scale+= 50;
 					else data->scale+= 100;
 				}
 				LoadAndShowImage(data);
 
-			}else if (Key == KEY_SUBTRACT) {
+			}else if (Key == KEY_SUBTRACT || Key == '-') {
 				if (data->scale > 1000) data->scale-= 100;
 				else if (data->scale > 100) data->scale-= 50;
 				else if (data->scale > 10) data->scale-= 10;
@@ -293,7 +360,7 @@ static LONG_PTR WINAPI ViewerDlgProc(HANDLE hDlg, int Msg, int Param1, LONG_PTR 
 						g_far.SendDlgMessage(hDlg, DM_CLOSE, 1, 0); // close dialog as reached the end
 						break;
 					}
-					if (LoadAndShowImage(data)) {
+					if (InspectFileFormat(data) && LoadAndShowImage(data)) {
 						UpdateDialogTitle(hDlg, data);
 						break;
 					}
@@ -337,7 +404,13 @@ static bool ShowImage(const std::string &initial_file, std::set<std::string> &se
 
 	g_far.DialogRun(hDlg);
 	g_far.DialogFree(hDlg);
+
 	WINPORT(DeleteConsoleImage)(NULL, WINPORT_IMAGE_ID);
+
+	if (!data.tmp_file.empty()) {
+		unlink(data.tmp_file.c_str());
+	}
+
 	if (!data.exited_by_enter) {
 		return false;
 	}
