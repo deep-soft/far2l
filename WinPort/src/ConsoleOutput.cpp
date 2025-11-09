@@ -461,7 +461,7 @@ SHORT ConsoleOutput::ModifySequenceEntityAt(SequenceModifier &sm, COORD pos, SMA
 						CI_SET_COMPOSITE(prev_ch, prev_str.c_str());
 						_buf.Write(prev_ch, _prev_pos);
 						AffectArea(area, _prev_pos.X, _prev_pos.Y);
-						
+
 						return 0;
 					}
 				}
@@ -956,4 +956,19 @@ unsigned int ConsoleOutput::WaitForChange(unsigned int prev_change_id, unsigned 
 const char *ConsoleOutput::BackendInfo(int entity)
 {
 	return _backend->OnConsoleBackendInfo(entity);
+}
+
+void ConsoleOutput::OnGetConsoleImageCaps(WinportGraphicsInfo *wgi)
+{
+	_backend->OnGetConsoleImageCaps(wgi);
+}
+
+bool ConsoleOutput::OnSetConsoleImage(const char *id, DWORD flags, COORD pos, DWORD width, DWORD height, const void *buffer)
+{
+	return _backend->OnSetConsoleImage(id, flags, pos, width, height, buffer);
+}
+
+bool ConsoleOutput::OnDeleteConsoleImage(const char *id)
+{
+	return _backend->OnDeleteConsoleImage(id);
 }

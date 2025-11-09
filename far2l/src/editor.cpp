@@ -2423,7 +2423,6 @@ int Editor::ProcessKey(FarKey Key)
 						ShowEditor(TRUE);
 					else
 						Show();
-
 					if (PrevMaxPos > CurLine->GetCellCurPos()) {
 						CurLine->SetCellCurPos(PrevMaxPos);
 						CurLine->FastShow();
@@ -3362,14 +3361,8 @@ case KEY_CTRLNUMPAD3: {
 						&& CurLine->GetCurPos() >= CurLine->GetLength() && CurLine->m_next) {
 
 					Pasting++;
-					if (m_bWordWrap) {
-						// Fixes Ctrl+Right at the end of logical line in Word Wrap mode
-						ProcessKey(KEY_DOWN);
-						ProcessKey(KEY_HOME);
-					} else {
-						ProcessKey(KEY_HOME);
-						ProcessKey(KEY_DOWN);
-					}
+					ProcessKey(KEY_DOWN);
+					ProcessKey(KEY_HOME);
 					Pasting--;
 
 					if (!Flags.Check(FEDITOR_DIALOGMEMOEDIT)) {
@@ -3704,8 +3697,8 @@ int Editor::ProcessMouse(MOUSE_EVENT_RECORD *MouseEvent)
 					int v_start, v_end;
 					CurLine->GetVisualLine(m_CurVisualLineInLogicalLine, v_start, v_end);
 					m_WordWrapMaxRightPos = CurLine->GetCellCurPos() - CurLine->RealPosToCell(v_start);
+					MaxRightPos = CurLine->GetCellCurPos();
 				}
-				MaxRightPos = CurLine->GetCellCurPos();
 				// Снимаем любое предыдущее выделение при новом клике.
 		        // UnmarkBlock() должен вызываться только при первом клике, а не при каждом движении
         		if (!(MouseEvent->dwEventFlags & MOUSE_MOVED)) {
@@ -3759,7 +3752,7 @@ int Editor::ProcessMouse(MOUSE_EVENT_RECORD *MouseEvent)
 			&& (MouseEvent->dwEventFlags & (DOUBLE_CLICK | MOUSE_MOVED | MOUSE_HWHEELED | MOUSE_WHEELED)) == 0) {
 		ProcessPasteEvent();
 	}
-	
+
 	return TRUE;
 }
 
@@ -7362,7 +7355,7 @@ void Editor::SetTabSize(int NewSize)
 void Editor::SetWordWrap(int NewMode)
 {
 	if (m_MouseButtonIsHeld) return;
-	
+
 	if ((NewMode != 0) != m_bWordWrap)
 	{
 		m_bWordWrap = (NewMode != 0);

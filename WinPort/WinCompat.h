@@ -159,7 +159,7 @@ typedef SHORT *PSHORT;
 typedef LONGLONG *PLONGLONG;
 typedef ULONGLONG *PULONGLONG;
 
-//#define TCHAR WCHAR 
+//#define TCHAR WCHAR
 #define CONST const
 
 //typedef const CHAR *LPCSTR;
@@ -1472,6 +1472,13 @@ typedef LONG NTSTATUS;
 #define IS_INTRESOURCE(_r) ((((ULONG_PTR)(_r)) >> 16) == 0)
 
 #define CREATE_SUSPENDED                  0x00000004
+
+typedef void *HCONSOLEIMAGE;
+typedef struct WinportGraphicsInfo1
+{
+    DWORD Caps;
+    COORD PixPerCell;
+} WinportGraphicsInfo;
 
 #define HGLOBAL     HANDLE
 #define GMEM_FIXED          0x0000
