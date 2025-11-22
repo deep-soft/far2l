@@ -524,19 +524,44 @@ void VTFar2lExtensios::OnInteract_ImageSet(StackSerializer &stk_ser)
 {
 	DWORD64 flags{};
 	DWORD width{}, height{};
-	COORD pos{};
+	SMALL_RECT area{-1, -1, -1, -1};
 	const std::string &id = stk_ser.PopStr();
 	stk_ser.PopNum(flags);
-	stk_ser.PopNum(pos.X);
-	stk_ser.PopNum(pos.Y);
+	stk_ser.PopNum(area.Left);
+	stk_ser.PopNum(area.Top);
+	stk_ser.PopNum(area.Right);
+	stk_ser.PopNum(area.Bottom);
 	stk_ser.PopNum(width);
 	stk_ser.PopNum(height);
 	uint8_t ok = 0;
 	if (width && height) {
-		std::vector<char> bitmap(size_t(width) * height * 4);
+		size_t buffer_size;
+		switch (flags & WP_IMG_MASK_FMT) {
+			case WP_IMG_PNG: buffer_size = size_t(width); break;
+			case WP_IMG_RGB: buffer_size = size_t(width) * height * 3; break;
+			case WP_IMG_RGBA: buffer_size = size_t(width) * height * 4; break;
+			default:
+				throw std::runtime_error(StrPrintf("Bad image flags: 0x%llx", (unsigned long long)flags));
+		}
+		std::vector<char> bitmap(buffer_size);
 		stk_ser.Pop(bitmap.data(), bitmap.size());
-		ok = WINPORT(SetConsoleImage)(NULL, id.c_str(), flags, pos, width, height, bitmap.data()) ? 1 : 0;
+		ok = WINPORT(SetConsoleImage)(NULL, id.c_str(), flags, &area, width, height, bitmap.data()) ? 1 : 0;
 	}
+	stk_ser.Clear();
+	stk_ser.PushNum(ok);
+}
+
+void VTFar2lExtensios::OnInteract_ImageRotate(StackSerializer &stk_ser)
+{
+	unsigned char angle_x90{};
+	SMALL_RECT area{-1, -1, -1, -1};
+	const std::string &id = stk_ser.PopStr();
+	stk_ser.PopNum(area.Left);
+	stk_ser.PopNum(area.Top);
+	stk_ser.PopNum(area.Right);
+	stk_ser.PopNum(area.Bottom);
+	stk_ser.PopNum(angle_x90);
+	uint8_t ok = WINPORT(RotateConsoleImage)(NULL, id.c_str(), &area, angle_x90) ? 1 : 0;
 	stk_ser.Clear();
 	stk_ser.PushNum(ok);
 }
@@ -544,7 +569,7 @@ void VTFar2lExtensios::OnInteract_ImageSet(StackSerializer &stk_ser)
 void VTFar2lExtensios::OnInteract_ImageDel(StackSerializer &stk_ser)
 {
 	const std::string &id = stk_ser.PopStr();
-	BOOL ok = WINPORT(DeleteConsoleImage)(NULL, id.c_str());
+	uint8_t ok = WINPORT(DeleteConsoleImage)(NULL, id.c_str()) ? 1 : 0;
 	stk_ser.Clear();
 	stk_ser.PushNum(ok);
 }
@@ -556,6 +581,7 @@ void VTFar2lExtensios::OnInteract_Image(StackSerializer &stk_ser)
 	switch (code) {
 		case FARTTY_INTERACT_IMAGE_CAPS: OnInteract_ImageCaps(stk_ser); break;
 		case FARTTY_INTERACT_IMAGE_SET: OnInteract_ImageSet(stk_ser); break;
+		case FARTTY_INTERACT_IMAGE_ROT: OnInteract_ImageRotate(stk_ser); break;
 		case FARTTY_INTERACT_IMAGE_DEL: OnInteract_ImageDel(stk_ser); break;
 
 		default:

@@ -2,14 +2,17 @@
 project(ImageViewer)
 
 set(SOURCES
-ImageViewer.cpp 
+Plugin.cpp 
+ImageView.cpp 
+ImageAtFull.cpp
+ImageAtQV.cpp
 )
 
 add_library (ImageViewer MODULE ${SOURCES})
 
 target_link_libraries(ImageViewer utils far2l)
 
-target_compile_definitions(ImageViewer PRIVATE -DWINPORT_DIRECT -DUNICODE -DFAR_DONT_USE_INTERNALS)
+target_compile_definitions(ImageViewer PRIVATE -DUNICODE -DFAR_DONT_USE_INTERNALS)
 
 target_include_directories(ImageViewer PRIVATE .)
 target_include_directories(ImageViewer PRIVATE ../WinPort)

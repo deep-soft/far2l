@@ -80,8 +80,12 @@
 
 	// graphics API
 	WINPORT_DECL_DEF(GetConsoleImageCaps, BOOL, (HANDLE hConsoleOutput, size_t sizeof_wgi, WinportGraphicsInfo *wgi))
+
 	// flags: format identity, one of WP_IMG_ that is supported according to GetConsoleImageCaps
-	WINPORT_DECL_DEF(SetConsoleImage, BOOL, (HANDLE hConsoleOutput, const char *id, DWORD64 flags, COORD pos, DWORD width, DWORD height, const void *buffer))
+	// width and height is image pixels dimensions for RGB/RGBA formats, but for PNG - width specifies buffer byte size and height must be 1 (but ignored for now)
+	// area is optional and its fields are also optional each one, use -1 to use default value
+	WINPORT_DECL_DEF(SetConsoleImage, BOOL, (HANDLE hConsoleOutput, const char *id, DWORD64 flags, const SMALL_RECT *area, DWORD width, DWORD height, const void *buffer))
+	WINPORT_DECL_DEF(RotateConsoleImage, BOOL, (HANDLE hConsoleOutput, const char *id, const SMALL_RECT *area, unsigned char angle_x90))
 	WINPORT_DECL_DEF(DeleteConsoleImage, BOOL, (HANDLE hConsoleOutput, const char *id))
 
 #ifdef WINPORT_REGISTRY

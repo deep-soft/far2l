@@ -466,7 +466,7 @@ void TTYBackend::DispatchImagesProbe(TTYOutput &tty_out)
 	tty_out.RequestCellSize();
 	TTYConsoleImage probe_img;
 	probe_img.width = probe_img.height = 1;
-	probe_img.pixel_data.resize(probe_img.width * probe_img.height * (probe_img.bpp / 8));
+	probe_img.pixel_data.resize(probe_img.width * probe_img.height * (probe_img.fmt / 8));
 	unsigned int kitty_id = tty_out.SendKittyImage(PROBE_IMAGE_ID, probe_img);
 	tty_out.RequestStatus();
 	fprintf(stderr, "%s: kitty_id=%u\n", __FUNCTION__, kitty_id);
@@ -1497,26 +1497,36 @@ bool TTYBackend::CheckKittyImagesSupport()
 	}
 }
 
-bool TTYBackend::OnSetConsoleImage(const char *id, DWORD64 flags, COORD pos, DWORD width, DWORD height, const void *buffer)
+bool TTYBackend::OnSetConsoleImage(const char *id, DWORD64 flags, const SMALL_RECT *area, DWORD width, DWORD height, const void *buffer)
 {
 	size_t buffer_size;
-	if (flags == WP_IMG_RGBA) {
-		buffer_size = size_t(width) * height * 4;
-	} else if (flags == WP_IMG_RGB) {
-		buffer_size = size_t(width) * height * 3;
-	} else {
-		return false;
+	const auto fmt = (flags & WP_IMG_MASK_FMT);
+	switch (fmt) {
+		case WP_IMG_PNG: buffer_size = size_t(width); break;
+		case WP_IMG_RGB: buffer_size = size_t(width) * height * 3; break;
+		case WP_IMG_RGBA: buffer_size = size_t(width) * height * 4; break;
+		default:
+			fprintf(stderr, "%s: bad flags 0x%llx\n", __FUNCTION__, (unsigned long long)flags);
+			return false;
 	}
 
 	if (_far2l_tty) {
 		uint8_t ok = 0;
+		SMALL_RECT def_area = {-1, -1, -1, -1};
+		if (!area) {
+			area = &def_area;
+		}
 		try {
 			StackSerializer stk_ser;
-			stk_ser.Push(buffer, buffer_size);
+			if (buffer_size) {
+				stk_ser.Push(buffer, buffer_size);
+			}
 			stk_ser.PushNum(height);
 			stk_ser.PushNum(width);
-			stk_ser.PushNum(pos.Y);
-			stk_ser.PushNum(pos.X);
+			stk_ser.PushNum(area->Bottom);
+			stk_ser.PushNum(area->Right);
+			stk_ser.PushNum(area->Top);
+			stk_ser.PushNum(area->Left);
 			stk_ser.PushNum(flags);
 			stk_ser.PushStr(id);
 			stk_ser.PushNum(FARTTY_INTERACT_IMAGE_SET);
@@ -1531,17 +1541,24 @@ bool TTYBackend::OnSetConsoleImage(const char *id, DWORD64 flags, COORD pos, DWO
 
 	if (CheckKittyImagesSupport()) {
 		try {
+			auto cur_pos = g_winport_con_out->GetCursor();
 			std::string str_id(id);
 			std::lock_guard<std::mutex> lock(_async_mutex);
 			auto &img = _images[str_id];
 
 			img.pixel_data.assign(static_cast<const uint8_t*>(buffer), static_cast<const uint8_t*>(buffer) + buffer_size);
 
-			img.bpp = (flags == WP_IMG_RGBA) ? 32 : 24;
+			switch (fmt) {
+				case WP_IMG_RGBA: img.fmt = 32; break;
+				case WP_IMG_RGB: img.fmt = 24; break;
+				case WP_IMG_PNG: img.fmt = 100; break;
+				default:
+					return false;
+			}
 			img.width = width;
 			img.height = height;
-			img.pos = pos;
-
+			img.pixel_offset = (flags & WP_IMG_PIXEL_OFFSET) != 0;
+			MakeImageArea(img.area, area, cur_pos);
 			_images_to_display.insert(str_id);
 		} catch (...) {
 			return false;
@@ -1554,6 +1571,34 @@ bool TTYBackend::OnSetConsoleImage(const char *id, DWORD64 flags, COORD pos, DWO
 	_ae.images_changed = true;
 	_async_cond.notify_all(); // Wake up the writer thread
 	return true;
+}
+
+bool TTYBackend::OnRotateConsoleImage(const char *id, const SMALL_RECT *area, unsigned char angle_x90)
+{
+	if (_far2l_tty) {
+		uint8_t ok = 0;
+		try {
+			SMALL_RECT def_area = {-1, -1, -1, -1};
+			if (!area) {
+				area = &def_area;
+			}
+			StackSerializer stk_ser;
+			stk_ser.PushNum(angle_x90);
+			stk_ser.PushNum(area->Bottom);
+			stk_ser.PushNum(area->Right);
+			stk_ser.PushNum(area->Top);
+			stk_ser.PushNum(area->Left);
+			stk_ser.PushStr(id);
+			stk_ser.PushNum(FARTTY_INTERACT_IMAGE_ROT);
+			stk_ser.PushNum(FARTTY_INTERACT_IMAGE);
+			if (Far2lInteract(stk_ser, true)) {
+				stk_ser.PopNum(ok);
+			}
+		} catch(std::exception &) {
+		}
+		return ok != 0;
+	}
+	return false;
 }
 
 bool TTYBackend::OnDeleteConsoleImage(const char *id)

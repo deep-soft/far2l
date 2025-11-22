@@ -2,10 +2,10 @@
 #include <dlfcn.h>
 #include "../NotifySh.h"
 #include "wxWinTranslations.h"
+#include "wxKeyboardLedsState.h"
 #include "../../../utils/src/POpen.cpp"
 #include <vector>
 #include <memory>
-#include <optional>
 
 #define AREAS_REDUCTION
 
@@ -181,6 +181,7 @@ extern "C" __attribute__ ((visibility("default"))) bool WinPortMainBackend(WinPo
 	}
 
 	wxEntry(a->argc, a->argv);
+
 	wxUninitialize();
 	*a->result = g_exit_code;
 	return true;
@@ -586,6 +587,8 @@ wxEND_EVENT_TABLE()
 WinPortPanel::WinPortPanel(WinPortFrame *frame, const wxPoint& pos, const wxSize& size)
 	: _paint_context(this), _frame(frame), _refresh_rects_throttle(WINPORT(GetTickCount)())
 {
+	g_wx_keyboard_leds_state.Startup();
+
 	_backend_info.emplace_back(
 		StrPrintf("Build/wxWidgets %d.%d.%d", wxMAJOR_VERSION, wxMINOR_VERSION, wxRELEASE_NUMBER));
 
@@ -624,6 +627,8 @@ WinPortPanel::WinPortPanel(WinPortFrame *frame, const wxPoint& pos, const wxSize
 
 WinPortPanel::~WinPortPanel()
 {
+	g_wx_keyboard_leds_state.Shutdown();
+
 #ifdef __APPLE__
 	Touchbar_Deregister();
 #endif
@@ -720,7 +725,7 @@ void WinPortPanel::OnTouchbarKey(bool alternate, int index)
 	if (wxGetKeyState(WXK_SHIFT)) ir.Event.KeyEvent.dwControlKeyState|= SHIFT_PRESSED;
 	if (wxGetKeyState(WXK_CONTROL)) ir.Event.KeyEvent.dwControlKeyState|= LEFT_CTRL_PRESSED;
 	if (wxGetKeyState(WXK_ALT)) ir.Event.KeyEvent.dwControlKeyState|= LEFT_ALT_PRESSED;
-	ir.Event.KeyEvent.dwControlKeyState|= WxKeyboardLedsState();
+	ir.Event.KeyEvent.dwControlKeyState|= g_wx_keyboard_leds_state.Current();
 
 	fprintf(stderr, "%s: F%d dwControlKeyState=0x%x\n", __FUNCTION__,
 		index + 1, ir.Event.KeyEvent.dwControlKeyState);
@@ -1350,6 +1355,21 @@ bool isLayoutDependentKey( wxKeyEvent& event ) {
 	}
 }
 
+static void CheckForLedsStateUpdate(int kc, bool down)
+{
+#ifdef __WXOSX__ // under mac NumLock emulated with Clear button
+	if (kc == WXK_CLEAR && down) {
+		g_wx_keyboard_leds_state.Toggle(NUMLOCK_ON);
+	} else if (kc == WXK_SCROLL || kc == WXK_CAPITAL) {
+		g_wx_keyboard_leds_state.Current(true);
+	}
+#else
+	if (kc == WXK_NUMLOCK || kc == WXK_SCROLL || kc == WXK_CAPITAL) {
+		g_wx_keyboard_leds_state.Current(true);
+	}
+#endif
+}
+
 void WinPortPanel::OnKeyDown( wxKeyEvent& event )
 {
 	ResetTimerIdling();
@@ -1379,6 +1399,8 @@ void WinPortPanel::OnKeyDown( wxKeyEvent& event )
 		event.Skip();
 		return;
 	}
+
+	CheckForLedsStateUpdate(event.GetKeyCode(), true);
 
 #ifdef __APPLE__
 	if (!event.RawControlDown() && !event.ShiftDown() && !event.MetaDown() && !event.AltDown() && event.CmdDown()
@@ -1534,6 +1556,8 @@ void WinPortPanel::OnKeyUp( wxKeyEvent& event )
 		event.Skip();
 		return;
 	}
+
+	CheckForLedsStateUpdate(event.GetKeyCode(), false);
 
 #ifdef __WXOSX__
 	// Workaround for #1580:
@@ -1742,23 +1766,9 @@ void WinPortPanel::OnPaint( wxPaintEvent& event )
 	else
 		_paint_context.OnPaint(dc);
 
-	{
-		std::lock_guard<std::mutex> lock(_images);
-		if (!_images.empty()) {
-			wxRegion rgn = GetUpdateRegion();
-			wxRect img_rc, rc = rgn.GetBox();
-			for (auto& it : _images) {
-				auto sz = it.second.bitmap.GetSize();
-				img_rc.SetLeft(_paint_context.FontWidth() * it.second.pos.X);
-				img_rc.SetTop(_paint_context.FontHeight() * it.second.pos.Y);
-				img_rc.SetWidth(sz.GetWidth());
-				img_rc.SetHeight(sz.GetHeight());
-				if (rc.Intersects(img_rc)) {
-					dc.DrawBitmap(it.second.bitmap, img_rc.GetLeft(), img_rc.GetTop(), false); // Use 'false' for no transparency, as we pre-rendered on a black bg
-				}
-			}
-		}
-	}
+	wxRegion rgn = GetUpdateRegion();
+	wxRect rc = rgn.GetBox();
+	_images.Paint(dc, rc, _paint_context.FontWidth(), _paint_context.FontHeight());
 
 	if (_force_size_on_paint_state == 0) {
 		_force_size_on_paint_state = 1;
@@ -2157,6 +2167,7 @@ void WinPortPanel::CheckPutText2CLip()
 void WinPortPanel::OnSetFocus( wxFocusEvent &event )
 {
 	//fprintf(stderr, "OnSetFocus\n");
+	g_wx_keyboard_leds_state.Current(true);
 	const bool was_focused = (_focused_ts != 0);
 	const DWORD ts = WINPORT(GetTickCount)();
 	_focused_ts = ts ? ts : 1;
@@ -2171,72 +2182,48 @@ void WinPortPanel::OnSetFocus( wxFocusEvent &event )
 
 void WinPortPanel::OnGetConsoleImageCaps(WinportGraphicsInfo *wgi)
 {
-	wgi->Caps = WP_IMGCAP_RGBA;
+	wgi->Caps = WP_IMGCAP_RGBA | WP_IMGCAP_SCROLL | WP_IMGCAP_ROTATE;
 	wgi->PixPerCell.X = _paint_context.FontWidth();
 	wgi->PixPerCell.Y = _paint_context.FontHeight();
 }
 
-bool WinPortPanel::OnSetConsoleImage(const char *id, DWORD64 flags, COORD pos, DWORD width, DWORD height, const void *buffer)
+bool WinPortPanel::OnSetConsoleImage(const char *id, DWORD64 flags, const SMALL_RECT *area, DWORD width, DWORD height, const void *buffer)
 {
-	std::string str_id(id);
-	try {
-		fprintf(stderr, "OnSetConsoleImage: flags=%llu width=%d height=%d\n", flags, width, height);
-		std::optional<wxImage> wx_img;
-		const size_t num_pixels = size_t(width) * height;
-		unsigned char *pixel_data = (unsigned char *)buffer;
-		if (flags == WP_IMG_RGB) {
-			wx_img.emplace((int)width, (int)height, pixel_data, true);
-		} else if (flags == WP_IMG_RGBA) {
-			unsigned char *rgb = (unsigned char *)malloc(num_pixels * 3);
-			unsigned char *alpha = (unsigned char *)malloc(num_pixels);
-			for (size_t i = 0; i < num_pixels; ++i) {
-				rgb[i * 3 + 0] = pixel_data[i * 4 + 0];
-				rgb[i * 3 + 1] = pixel_data[i * 4 + 1];
-				rgb[i * 3 + 2] = pixel_data[i * 4 + 2];
-				alpha[i]       = pixel_data[i * 4 + 3];
-			}
-			wx_img.emplace((int)width, (int)height, rgb, alpha, false);
-			if (!wx_img->IsOk()) {
-				free(rgb);
-				free(alpha);
-			}
-		} else {
-			fprintf(stderr, "%s('%s'): bad flags\n", __FUNCTION__, id);
+	auto impl = [&]() {
+		if (!_images.Set(id, flags, area, width, height, buffer, _paint_context.FontHeight())) {
 			return false;
 		}
-		if (!wx_img->IsOk()) {
-			fprintf(stderr, "%s('%s'): failed to create wxImage\n", __FUNCTION__, id);
+		Refresh(false, nullptr);
+		return true;
+	};
+
+	return wxIsMainThread() ? impl() : CallInMain<bool>(impl);
+}
+
+bool WinPortPanel::OnRotateConsoleImage(const char *id, const SMALL_RECT *area, unsigned char angle_x90)
+{
+	auto impl = [&]() {
+		if (!_images.Rotate(id, area, angle_x90)) {
 			return false;
 		}
+		Refresh(false, nullptr);
+		return true;
+	};
 
-		std::lock_guard<std::mutex> lock(_images);
-		auto &img = _images[str_id];
-		img.pos = pos;
-		img.bitmap = *wx_img;
-	} catch (...) {
-		_images.erase(str_id);
-		fprintf(stderr, "%s('%s'): exception\n", __FUNCTION__, id);
-		return false;
-	}
-
-	auto fn = std::bind(&WinPortPanel::Refresh, this, false, nullptr);
-	CallInMainNoRet(fn);
-	return true;
+	return wxIsMainThread() ? impl() : CallInMain<bool>(impl);
 }
 
 bool WinPortPanel::OnDeleteConsoleImage(const char *id)
 {
-	{
-		std::string str_id(id);
-		std::lock_guard<std::mutex> lock(_images);
-		if (!_images.erase(str_id)) {
+	auto impl = [&]() {
+		if (!_images.Delete(id)) {
 			return false;
 		}
-	}
+		Refresh(false, nullptr);
+		return true;
+	};
 
-	auto fn = std::bind(&WinPortPanel::Refresh, this, false, nullptr);
-	CallInMainNoRet(fn);
-	return true;
+	return wxIsMainThread() ? impl() : CallInMain<bool>(impl);
 }
 
 void WinPortPanel::OnKillFocus( wxFocusEvent &event )

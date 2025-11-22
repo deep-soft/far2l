@@ -1474,11 +1474,32 @@ typedef LONG NTSTATUS;
 #define CREATE_SUSPENDED                  0x00000004
 
 // capabilities reported by GetConsoleImageCaps
-#define WP_IMGCAP_RGBA	0x01 // supports WP_IMG_RGB/WP_IMG_RGBA
+#define WP_IMGCAP_RGBA      0x001 // supports WP_IMG_RGB/WP_IMG_RGBA
+#define WP_IMGCAP_PNG       0x002 // supports WP_IMG_PNG
+#define WP_IMGCAP_SCROLL    0x100 // supports existing image scrolling
+#define WP_IMGCAP_ROTATE    0x200 // supports existing image rotation
 
 // flags used for SetConsoleImage
-#define WP_IMG_RGBA		0 // supported if WP_IMGCAP_RGBA
-#define WP_IMG_RGB		1 // supported if WP_IMGCAP_RGBA
+#define WP_IMG_RGBA             0 // supported if WP_IMGCAP_RGBA
+#define WP_IMG_RGB              1 // supported if WP_IMGCAP_RGBA
+#define WP_IMG_PNG              2 // supported if WP_IMGCAP_PNG
+
+// SetConsoleImage scrolling flags supported if WP_IMGCAP_SCROLL reported
+// move already existing image and scroll it with 'prepending' by newly sent part
+#define WP_IMG_SCROLL_AT_LEFT   0x010000 // left->right scrolling, sending rectangle to insert at left
+#define WP_IMG_SCROLL_AT_RIGHT  0x020000 // right->left scrolling, sending rectangle to insert at right
+#define WP_IMG_SCROLL_AT_TOP    0x030000 // top->bottom scrolling, sending rectangle to insert at top
+#define WP_IMG_SCROLL_AT_BOTTOM 0x040000 // bottom->top scrolling, sending rectangle to insert at bottom
+
+
+// if area fully specified - then:
+//  if WP_IMG_PIXEL_OFFSET is not set - image scaled to cover specified area [LEFT TOP RIGHT BOTTOM]
+//  if WP_IMG_PIXEL_OFFSET is set - image NOT scaled, and RIGHT and BOTTOM fields treated as pixel-level offset for displaying image
+#define WP_IMG_PIXEL_OFFSET     0x100000
+
+
+#define WP_IMG_MASK_FMT         0x00ffff
+#define WP_IMG_MASK_SCROLL      0x070000
 
 typedef struct WinportGraphicsInfo1
 {

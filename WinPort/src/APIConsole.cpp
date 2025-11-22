@@ -522,13 +522,14 @@ extern "C" {
 		return TRUE;
 	}
 
-	WINPORT_DECL(SetConsoleImage, BOOL, (HANDLE con, const char *id, DWORD64 flags, COORD pos, DWORD width, DWORD height, const void *buffer))
+	WINPORT_DECL(SetConsoleImage, BOOL, (HANDLE con, const char *id, DWORD64 flags, const SMALL_RECT *area, DWORD width, DWORD height, const void *buffer))
 	{
-		if (!id || !buffer || width == 0 || height == 0) {
-			fprintf(stderr, "%s('%s', %d:%d, %u, %u, %p): bad args\n", __FUNCTION__, id ? id : "???", pos.X, pos.Y, width, height, buffer);
-			return FALSE;
-		}
-		return ChooseConOut(con)->OnSetConsoleImage(id, flags, pos, width, height, buffer);
+		return ChooseConOut(con)->OnSetConsoleImage(id, flags, area, width, height, buffer);
+	}
+
+	WINPORT_DECL(RotateConsoleImage, BOOL, (HANDLE con, const char *id, const SMALL_RECT *area, unsigned char angle_x90))
+	{
+		return ChooseConOut(con)->OnRotateConsoleImage(id, area, angle_x90);
 	}
 
 	WINPORT_DECL(DeleteConsoleImage, BOOL, (HANDLE con, const char *id))

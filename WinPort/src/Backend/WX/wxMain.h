@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "WinPortHandle.h"
 #include "wxClipboardBackend.h"
+#include "wxConsoleImages.h"
 
 #include <wx/wx.h>
 #include <wx/display.h>
@@ -93,14 +94,9 @@ class WinPortPanel: public wxPanel, protected IConsoleOutputBackend
 
 	struct BI : std::vector<std::string> {} _backend_info;
 
-	wxTimer* _periodic_timer{nullptr};
-	struct wxConsoleImage
-	{
-		wxBitmap bitmap;
-		COORD pos;
-	};
-	struct Images : std::map<std::string, wxConsoleImage>, std::mutex {} _images;
+	wxConsoleImages _images;
 
+	wxTimer* _periodic_timer{nullptr};
 	unsigned int _timer_idling_counter{0};
 	std::atomic<unsigned int> _last_title_ticks{0};
 	wxSize _initial_size{};
@@ -181,8 +177,10 @@ class WinPortPanel: public wxPanel, protected IConsoleOutputBackend
 	virtual void OnConsoleSetCursorBlinkTime(DWORD interval);
 	virtual void OnConsoleOutputFlushDrawing();
 	virtual const char *OnConsoleBackendInfo(int entity);
+
 	virtual void OnGetConsoleImageCaps(WinportGraphicsInfo *wgi);
-	virtual bool OnSetConsoleImage(const char *id, DWORD64 flags, COORD pos, DWORD width, DWORD height, const void *buffer);
+	virtual bool OnSetConsoleImage(const char *id, DWORD64 flags, const SMALL_RECT *area, DWORD width, DWORD height, const void *buffer);
+	virtual bool OnRotateConsoleImage(const char *id, const SMALL_RECT *area, unsigned char angle_x90);
 	virtual bool OnDeleteConsoleImage(const char *id);
 
 public:
