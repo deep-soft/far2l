@@ -1843,6 +1843,7 @@ void WinPortPanel::OnMouseNormal( wxMouseEvent &event, COORD pos_char)
 		if (wxGetKeyState(WXK_CONTROL)) ir.Event.MouseEvent.dwControlKeyState|= LEFT_CTRL_PRESSED;
 		if (wxGetKeyState(WXK_ALT)) ir.Event.MouseEvent.dwControlKeyState|= LEFT_ALT_PRESSED;
 	}
+	if (_key_tracker.Alt()) ir.Event.MouseEvent.dwControlKeyState|= LEFT_ALT_PRESSED;
 	if (event.LeftDown()) _mouse_state|= FROM_LEFT_1ST_BUTTON_PRESSED;
 	else if (event.MiddleDown()) _mouse_state|= FROM_LEFT_2ND_BUTTON_PRESSED;
 	else if (event.RightDown()) _mouse_state|= RIGHTMOST_BUTTON_PRESSED;
@@ -2182,7 +2183,7 @@ void WinPortPanel::OnSetFocus( wxFocusEvent &event )
 
 void WinPortPanel::OnGetConsoleImageCaps(WinportGraphicsInfo *wgi)
 {
-	wgi->Caps = WP_IMGCAP_RGBA | WP_IMGCAP_SCROLL | WP_IMGCAP_ROTATE;
+	wgi->Caps = WP_IMGCAP_RGBA | WP_IMGCAP_ATTACH | WP_IMGCAP_SCROLL | WP_IMGCAP_ROTATE | WP_IMGCAP_PNG | WP_IMGCAP_JPG;
 	wgi->PixPerCell.X = _paint_context.FontWidth();
 	wgi->PixPerCell.Y = _paint_context.FontHeight();
 }

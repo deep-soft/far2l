@@ -2,7 +2,7 @@
 #include "ImageView.h"
 #include "ExecAsync.h"
 
-#define HINT_STRING L"[Navigate: PGUP PGDN HOME | Pan: TAB CURSORS NUMPAD DEL + - * / = | Select: SPACE | Deselect: BS | Toggle: INS | ENTER | ESC]"
+#define HINT_STRING L"[Navigate: PGUP PGDN HOME | Pan: TAB CURSORS NUMPAD DEL + - * / = | Selection: SPACE BS INS | ENTER | ESC]"
 
 // how long msec wait before showing progress message window
 #define COMMAND_TIMEOUT_BEFORE_MESSAGE 300
@@ -220,7 +220,6 @@ bool ImageView::IterateFile(bool forward)
 	} else {
 		_cur_file = _all_files.size() - 1;
 	}
-	JustReset();
 	return true;
 }
 
@@ -513,7 +512,7 @@ bool ImageView::RenderImage()
 		}
 	}
 
-	if (!do_convert && rotated_angle == 0 && (wgi.Caps & WP_IMGCAP_SCROLL) != 0
+	if (!do_convert && rotated_angle == 0 && (wgi.Caps & WP_IMGCAP_SCROLL) != 0 && (wgi.Caps & WP_IMGCAP_ATTACH) != 0 
 			&& abs(_prev_left - src_left) < viewport_w && abs(_prev_top - src_top) < viewport_h) {
 
 		if (_prev_left != src_left && out) {
@@ -526,7 +525,7 @@ bool ImageView::RenderImage()
 				fprintf(stderr, "--- Sending to left edge [%d %d %d %d]\n",
 					src_left, _prev_top, src_left + ins_w, _prev_top + viewport_h);
 				out = WINPORT(SetConsoleImage)(NULL, WINPORT_IMAGE_ID, WP_IMG_RGB | WP_IMG_PIXEL_OFFSET
-					| WP_IMG_SCROLL_AT_LEFT, &area, ins_w, viewport_h, _send_data.data()) != FALSE;
+					| WP_IMG_SCROLL | WP_IMG_ATTACH_LEFT, &area, ins_w, viewport_h, _send_data.data()) != FALSE;
 			} else {
 				Blit(ins_w, viewport_h,
 					_send_data.data(), 0, 0, ins_w,
@@ -534,7 +533,7 @@ bool ImageView::RenderImage()
 				fprintf(stderr, "--- Sending to right edge [%d %d %d %d]\n",
 					src_left + viewport_w - ins_w, _prev_top, src_left + viewport_w, _prev_top + viewport_h);
 				out = WINPORT(SetConsoleImage)(NULL, WINPORT_IMAGE_ID, WP_IMG_RGB | WP_IMG_PIXEL_OFFSET
-					| WP_IMG_SCROLL_AT_RIGHT, &area, ins_w, viewport_h, _send_data.data()) != FALSE;
+					| WP_IMG_SCROLL | WP_IMG_ATTACH_RIGHT, &area, ins_w, viewport_h, _send_data.data()) != FALSE;
 			}
 		}
 		if (_prev_top != src_top && out) {
@@ -547,7 +546,7 @@ bool ImageView::RenderImage()
 				fprintf(stderr, "--- Sending to top edge [%d %d %d %d]\n",
 					src_left, src_top, src_left + viewport_w, src_top + ins_h);
 				out = WINPORT(SetConsoleImage)(NULL, WINPORT_IMAGE_ID, WP_IMG_RGB | WP_IMG_PIXEL_OFFSET
-					| WP_IMG_SCROLL_AT_TOP, &area, viewport_w, ins_h, _send_data.data()) != FALSE;
+					| WP_IMG_SCROLL | WP_IMG_ATTACH_TOP, &area, viewport_w, ins_h, _send_data.data()) != FALSE;
 			} else {
 				Blit(viewport_w, ins_h,
 					_send_data.data(), 0, 0, viewport_w,
@@ -555,7 +554,7 @@ bool ImageView::RenderImage()
 				fprintf(stderr, "--- Sending to bottom edge [%d %d %d %d]\n",
 					src_left, src_top + viewport_h - ins_h, src_left + viewport_w, src_top + viewport_h);
 				out = WINPORT(SetConsoleImage)(NULL, WINPORT_IMAGE_ID, WP_IMG_RGB | WP_IMG_PIXEL_OFFSET
-					| WP_IMG_SCROLL_AT_BOTTOM, &area, viewport_w, ins_h, _send_data.data()) != FALSE;
+					| WP_IMG_SCROLL | WP_IMG_ATTACH_BOTTOM, &area, viewport_w, ins_h, _send_data.data()) != FALSE;
 			}
 		}
 	} else {
@@ -598,7 +597,7 @@ void ImageView::DenoteState(const char *stage)
 	}
 
 	std::string pan;
-	if (_scale > 0 && fabs(_scale - 1) > 0.01) {
+	if (_scale > 0) {
 		const char c1 = (_scale - _scale_fit > 0.01) ? '>' : ((_scale - _scale_fit < -0.01) ? '<' : '[');
 		const char c2 = (_scale - _scale_fit > 0.01) ? '<' : ((_scale - _scale_fit < -0.01) ? '>' : ']');
 		pan+= StrPrintf("%c%d%%%c ", c1, int(_scale * 100), c2);
@@ -625,6 +624,20 @@ void ImageView::SetInfoAndPan(const std::string &info, const std::string &pan)
 		StrMB2Wide(CurFile(), ws_title, true);
 		FarDialogItemData dd_title = { ws_title.size(), (wchar_t*)ws_title.c_str() };
 
+		// update pan and info lengthes before title, so title will paint over previous one
+		// but texts  - after title, so text it will get drawn after title, and due to that - will remain visible
+		std::wstring ws_pan = StrMB2Wide(pan);
+		FarDialogItem di{};
+		if (g_far.SendDlgMessage(_dlg, DM_GETDLGITEMSHORT, 4, (LONG_PTR)&di)) {
+			di.X2 = di.X1 + (ws_pan.empty() ? 0 : ws_pan.size() - 1);
+			g_far.SendDlgMessage(_dlg, DM_SETDLGITEMSHORT, 4, (LONG_PTR)&di);
+		}
+		std::wstring ws_info = StrMB2Wide(info);
+		if (g_far.SendDlgMessage(_dlg, DM_GETDLGITEMSHORT, 5, (LONG_PTR)&di)) {
+			di.X1 = di.X2 - (ws_info.empty() ? 0 : ws_info.size() - 1);
+			g_far.SendDlgMessage(_dlg, DM_SETDLGITEMSHORT, 5, (LONG_PTR)&di);
+		}
+
 		if (_all_files[_cur_file].second) {
 			g_far.SendDlgMessage(_dlg, DM_SHOWITEM, 0, 0);
 			g_far.SendDlgMessage(_dlg, DM_SHOWITEM, 1, 1);
@@ -639,21 +652,9 @@ void ImageView::SetInfoAndPan(const std::string &info, const std::string &pan)
 		FarDialogItemData dd_status = { wcslen(HINT_STRING), (wchar_t*)HINT_STRING };
 		g_far.SendDlgMessage(_dlg, DM_SETTEXT, 3, (LONG_PTR)&dd_status);
 
-		// update status and info after title, so it will get redrawn after too, and due to that - will remain visible
-		std::wstring ws_pan = StrMB2Wide(pan);
-		FarDialogItem di{};
-		if (g_far.SendDlgMessage(_dlg, DM_GETDLGITEMSHORT, 4, (LONG_PTR)&di)) {
-			di.X2 = di.X1 + (ws_pan.empty() ? 0 : ws_pan.size() - 1);
-			g_far.SendDlgMessage(_dlg, DM_SETDLGITEMSHORT, 4, (LONG_PTR)&di);
-		}
 		FarDialogItemData dd_pan = { ws_pan.size(), (wchar_t*)ws_pan.c_str() };
 		g_far.SendDlgMessage(_dlg, DM_SETTEXT, 4, (LONG_PTR)&dd_pan);
 
-		std::wstring ws_info = StrMB2Wide(info);
-		if (g_far.SendDlgMessage(_dlg, DM_GETDLGITEMSHORT, 5, (LONG_PTR)&di)) {
-			di.X1 = di.X2 - (ws_info.empty() ? 0 : ws_info.size() - 1);
-			g_far.SendDlgMessage(_dlg, DM_SETDLGITEMSHORT, 5, (LONG_PTR)&di);
-		}
 		FarDialogItemData dd_info = { ws_info.size(), (wchar_t*)ws_info.c_str() };
 		g_far.SendDlgMessage(_dlg, DM_SETTEXT, 5, (LONG_PTR)&dd_info);
 	}
@@ -736,6 +737,7 @@ bool ImageView::SetupFull(SMALL_RECT &rc, HANDLE dlg)
 void ImageView::Home()
 {
 	_cur_file = _initial_file;
+	JustReset();
 	if (PrepareImage() && RenderImage()) {
 		DenoteState();
 	}
@@ -748,6 +750,7 @@ bool ImageView::Iterate(bool forward)
 			_cur_file = _initial_file;
 			return false; // bail out on logic error or infinite loop
 		}
+		JustReset();
 		if (PrepareImage() && RenderImage()) {
 			DenoteState();
 			return true;
@@ -827,9 +830,13 @@ COORD ImageView::ShiftByPixels(COORD delta) // returns actual shift in pixels
 	};
 }
 
-void ImageView::Reset()
+void ImageView::Reset(bool keep_rotation)
 {
+	int saved_rotate = _rotate;
 	JustReset();
+	if (keep_rotation) {
+		_rotate = saved_rotate;
+	}
 	RenderImage();
 	DenoteState();
 }

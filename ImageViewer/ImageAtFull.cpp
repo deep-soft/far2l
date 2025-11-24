@@ -29,12 +29,7 @@ public:
 		_drag_prev_pos = pos;
 	}
 
-	void DraggingFinish()
-	{
-		_dragging = false;
-	}
-
-	void DraggingCommit()
+	void DraggingApplyMoves()
 	{
 		if (_drag_pending.X != 0 || _drag_pending.Y != 0) {
 			COORD actual = ShiftByPixels(_drag_pending);
@@ -46,29 +41,37 @@ public:
 			}
 		}
 	}
+
+	void DraggingFinish()
+	{
+		if (_dragging) {
+			_dragging = false;
+			DraggingApplyMoves();
+		}
+	}
 };
 
 static LONG_PTR WINAPI DlgProcAtMax(HANDLE hDlg, int Msg, int Param1, LONG_PTR Param2)
 {
 	switch(Msg) {
-		case DN_ENTERIDLE:
-		{
-			ImageViewAtFull *iv = (ImageViewAtFull *)g_far.SendDlgMessage(hDlg, DM_GETDLGDATA, 0, 0);
-			iv->DraggingCommit();
-			return TRUE;
-		}
 		case DN_MOUSEEVENT:
 		{
 			ImageViewAtFull *iv = (ImageViewAtFull *)g_far.SendDlgMessage(hDlg, DM_GETDLGDATA, 0, 0);
 			const MOUSE_EVENT_RECORD *me = (const MOUSE_EVENT_RECORD *)Param2;
-			if ((me->dwButtonState & FROM_LEFT_1ST_BUTTON_PRESSED) != 0) {
+			if ( (me->dwButtonState & RIGHTMOST_BUTTON_PRESSED) != 0 && (me->dwEventFlags & MOUSE_MOVED)  == 0) {
+				if ((me->dwControlKeyState & (SHIFT_PRESSED | LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) != 0) {
+					iv->Rotate(-90);
+				} else {
+					iv->Rotate(90);
+				}
+
+			} else if ((me->dwButtonState & FROM_LEFT_1ST_BUTTON_PRESSED) != 0) {
 				iv->DraggingMove(me->dwMousePosition);
+				if (!WINPORT(WaitConsoleInput)(NULL, 0)) { // avoid movements 'accumulation'
+					iv->DraggingApplyMoves();
+				}
 			} else {
 				iv->DraggingFinish();
-			}
-			if ((me->dwControlKeyState & (SHIFT_PRESSED | LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) != 0
-					|| !WINPORT(WaitConsoleInput)(NULL, 0)) {
-				iv->DraggingCommit();
 			}
 			return TRUE;
 		}
@@ -100,17 +103,17 @@ static LONG_PTR WINAPI DlgProcAtMax(HANDLE hDlg, int Msg, int Param1, LONG_PTR P
 			switch (key) {
 				case 'a': case 'A': case KEY_MULTIPLY: case '*':
 					g_def_scale = DS_LESSOREQUAL_SCREEN;
-					iv->Reset();
+					iv->Reset(true);
 					break;
 				case 'q': case 'Q': case KEY_DEL: case KEY_NUMDEL:
 					g_def_scale = DS_EQUAL_SCREEN;
-					iv->Reset();
+					iv->Reset(true);
 					break;
 				case 'z': case 'Z': case KEY_DIVIDE: case '/':
 					g_def_scale = DS_EQUAL_IMAGE;
-					iv->Reset();
+					iv->Reset(true);
 					break;
-				case KEY_CLEAR: case '=': iv->Reset(); break;
+				case KEY_CLEAR: case '=': iv->Reset(false); break;
 				case KEY_ADD: case '+': case KEY_MSWHEEL_UP: iv->Scale(delta); break;
 				case KEY_SUBTRACT: case '-': case KEY_MSWHEEL_DOWN: iv->Scale(-delta); break;
 				case KEY_NUMPAD6: case KEY_RIGHT: iv->Shift(delta, 0); break;
