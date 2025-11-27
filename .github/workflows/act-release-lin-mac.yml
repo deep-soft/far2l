@@ -1,22 +1,15 @@
-# 2024-10-14 23:00
+
+# 2025-11-27 22:00
 name: act-Release -Lin-Mac
 
 on:
 #  push
   workflow_dispatch:
     inputs:
-#      sprintf:
-#        description: 'sprintf'
-#        type: boolean
-#        default: false
       PLUGINS_EXTRA: 
         description: 'PLUGINS_EXTRA'
         type: boolean
         default: true
-      remove_extra_lng: 
-        description: 'remove_extra_lng'
-        type: boolean
-        default: false
       make_archive_all:
         description: 'Archive ALL'
         type: boolean
@@ -67,30 +60,28 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          # - { name: "minimal"    , os: ubuntu-20.04 , dependencies: "-minimal"     , options: ""             }
-          # - { name: "withWX"     , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
-          # - { name: "noWX"       , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
-          # - { name: "withPYTHON" , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
-          # - { name: "noWXwPY"    , os: ubuntu-20.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no -DPYTHON=yes"   }
-          - { name: "minimal"    , os: ubuntu-22.04 , dependencies: "-minimal"     , options: ""             }
-          - { name: "withWX"     , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
-          - { name: "noWX"       , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
-          - { name: "withPYTHON" , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
-          - { name: "noWXwPY"    , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no -DPYTHON=yes"   }
-          - { name: "minimal"    , os: ubuntu-24.04 , dependencies: "-minimal"     , options: ""             }
-          - { name: "withWX"     , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
-          - { name: "noWX"       , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
-          - { name: "withPYTHON" , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
-          - { name: "noWXwPY"    , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no -DPYTHON=yes"   }
-          # - { name: "macos14"    , os: macos-14     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
-          # - { name: "minimal"    , os: macos-12     , dependencies: "-minimal"     , options: ""             }
-          # - { name: "withWX"     , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
-          # - { name: "noWX"       , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
-          # - { name: "withPYTHON" , os: macos-12     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          - { name: "min"     , os: ubuntu-22.04 , dependencies: "-minimal"     , options: "-DUSEWX=no  -DPYTHON=no"  }
+          - { name: "nWXnPY"  , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=no"  }
+          - { name: "wWXnPY"  , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=no"  }
+          - { name: "nWXwPY"  , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=yes" }
+          - { name: "wWXwPY"  , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=yes" }
+          - { name: "min"     , os: ubuntu-24.04 , dependencies: "-minimal"     , options: "-DUSEWX=no  -DPYTHON=no"  }
+          - { name: "nWXnPY"  , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=no"  }
+          - { name: "wWXnPY"  , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=no"  }
+          - { name: "nWXwPY"  , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=yes" }
+          - { name: "wWXwPY"  , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=yes" }
+          # - { name: "minimal"    , os: macos-13     , dependencies: "-minimal"     , options: ""             }
+          # - { name: "withWX"     , os: macos-13     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
+          # - { name: "noWX"       , os: macos-13     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
+          # - { name: "withPYTHON" , os: macos-13     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          # - { name: "macos15"    , os: macos-15     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
 
-    #if: ${{ matrix.job.name }} != 'withPYTHON' || ${{ inputs.withPYTHON }}
+    #if: ${{ matrix.job.name }} != 'wPY' || ${{ inputs.wPY }}
     steps:
-    - uses: deep-soft/checkout@v4
+    - name: Checkout source code
+      uses: deep-soft/checkout@v4
+      with:
+        submodules: recursive
 
     - name: get os version
       shell: bash
@@ -169,31 +160,13 @@ jobs:
       run: |
         bash bins/sed-stuff.sh "_" "${{ inputs.SED_STUFF_PARAMS }}";
 
-# change sprintf with snprintf - NOT working, different parameters
-#    - name: macos sprintf to snprintf
-#      if: ${{ inputs.sprintf }}
-#      continue-on-error: true
-#      shell: bash
-#      run: |
-#        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
-#          echo "macos sprintf to snprintf";
-#          f_found=$(grep -rl --exclude-dir=.git --exclude=Cargo.* --exclude=*.lock "sprintf" . | tr '\r' ' ' | tr '\n' ' ');
-#          if [ ${#f_found} -ge 2 ]; then
-#            #echo "f_found=$f_found";
-#            echo ":f_found:";
-#            printf '@(_%s_)\r\n' $f_found;
-#            $SED_EXE -ibak 's!sprintf!snprintf!g' $f_found;
-#            echo ":f_found_2:"
-#            f_found_2=$(grep -rl --exclude-dir=.git --exclude=Cargo.* --exclude=*.lock "sprintf" . | tr '\r' ' ' | tr '\n' ' ');
-#            printf '@(_%s_)\r\n' $f_found_2;
-#          fi
-#        fi
-
     - name: extra scripts
+      continue-on-error: true
       shell: bash
       run: |
         if [ -d bins/extra-scripts ]; then
-          cp bins/extra-scripts/*.sh far2l/bootstrap;
+          cp bins/extra-scripts/*.sh far2l/bootstrap || true;
+          cp bins/extra-scripts/*.1  far2l/bootstrap || true;
         fi
       
     - name: extra plugins
@@ -316,8 +289,8 @@ jobs:
           # cmake $GITHUB_WORKSPACE -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
           cmake -S . -B _build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
         fi
-        if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
-          cmake -S . -B _build -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DPYTHON=yes;
+        if [[ ${{ matrix.job.os }} =~ "macos-15" ]]; then
+          cmake -S . -B _build -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
         fi
 
     - name: Build
@@ -327,22 +300,16 @@ jobs:
       run: |
         cmake --build . --config $BUILD_TYPE;
 
-    - name: Remove extra languages
-      if: ${{ inputs.remove_extra_lng }}
+    - name: Prepare for package
       continue-on-error: true
-      working-directory: ${{github.workspace}}/_build
+      working-directory: '${{github.workspace}}/_build/install'
       shell: bash
       run: |
-        #touch 0-all-lng-hlf.txt;
-        #find . *.lng >> 0-all-lng-hlf.txt;
-        #find . *.hlf >> 0-all-lng-hlf.txt;
-        #lng_hlf_no_eng=$(grep.exe -i -v "eng\.\|e\.\|en\." 0-all-lng-hlf.txt);
-
-        lng_hlf_no_eng=$(find . -name *.lng -o -name *.hlf | grep -i -v "eng\.\|en\.\|calce\.|colorere\.");
-        for lng_hlf in $lng_hlf_no_eng ; do
-          echo "$lng_hlf";
-          rm "$lng_hlf";
-        done
+        echo 'Prepare for package';
+        echo "Version: " ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }} > 00-info.txt;
+        if [ -f neofetch.sh ]; then
+          bash neofetch.sh >> 00-info.txt;
+        fi
 
     - name: Build package
       working-directory: ${{github.workspace}}/_build
@@ -364,10 +331,21 @@ jobs:
         tree;
 
 #    - name: Packing Artifact
-#      uses: deep-soft/upload-artifact@v3
+#      uses: deep-soft/upload-artifact@v4
 #      with:
 #        name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ matrix.job.name }}
 #        path: ${{github.workspace}}/_build/install
+
+    - name: Prepare for zip
+      continue-on-error: true
+      working-directory: '${{github.workspace}}/_build/install'
+      shell: bash
+      run: |
+        echo 'Prepare for zip';
+        if [ -f far2l-lang-del-files-3.sh ]; then
+          bash far2l-lang-del-files-3.sh;
+        fi
+        tree;
 
     - name: Archive Release
       continue-on-error: true
@@ -378,8 +356,8 @@ jobs:
         directory: '${{github.workspace}}/_build/install'
         path: '.'
         # exclusions: '*.git* /*node_modules/* .editorconfig'
-        exclusions: '*Bel.lng *Rus.lng *Cze.lng *Ger.lng *Hun.lng *Pol.lng *Spa.lng *Ukr.lng *bel.lng *rus.lng *calcb.lng *calcr.lng *colorerb.lng *colorerr.lng *editorcomp_be.lng *editorcomp_ru.lng *isrcrus.lng'
-        recursive_exclusions: '*Bel.lng *Rus.lng *Cze.lng *Ger.lng *Hun.lng *Pol.lng *Spa.lng *Ukr.lng *bel.lng *rus.lng *calcb.lng *calcr.lng *colorerb.lng *colorerr.lng *editorcomp_be.lng *editorcomp_ru.lng *isrcrus.lng'
+        #exclusions: '*Bel.lng *Rus.lng *Cze.lng *Ger.lng *Hun.lng *Pol.lng *Spa.lng *Ukr.lng *bel.lng *rus.lng *calcb.lng *calcr.lng *colorerb.lng *colorerr.lng *editorcomp_be.lng *editorcomp_ru.lng *isrcrus.lng'
+        #recursive_exclusions: '*Bel.lng *Rus.lng *Cze.lng *Ger.lng *Hun.lng *Pol.lng *Spa.lng *Ukr.lng *bel.lng *rus.lng *calcb.lng *calcr.lng *colorerb.lng *colorerr.lng *editorcomp_be.lng *editorcomp_ru.lng *isrcrus.lng'
         debug: yes
 
     - name: Publish Release
@@ -425,4 +403,5 @@ jobs:
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C $BUILD_TYPE
+
 
