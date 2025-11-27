@@ -45,7 +45,8 @@ jobs:
 
     #if: ${{ matrix.job.name }} != 'withPYTHON' || ${{ inputs.withPYTHON }}
     steps:
-    - uses: deep-soft/checkout@v4
+    - name: Checkout source code
+      uses: deep-soft/checkout@v4
 
     - name: get os version
       shell: bash
@@ -141,3 +142,10 @@ jobs:
         fi
         cat 00-info.txt;
         tree;
+
+    - name: Upload results
+      continue-on-error: true
+      uses: deep-soft/upload-artifact@v4
+      with:
+        name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}
+        path: '${{github.workspace}}/_build/install/00-info.txt'
