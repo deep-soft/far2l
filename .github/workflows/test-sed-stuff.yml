@@ -55,7 +55,8 @@ jobs:
         if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
           _os_name_="macos";
           _os_version_=$(sw_vers | grep ProductVersion | cut -d':' -f2 | xargs echo -n);
-          echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV;
+          _os_arch_=$(uname -m);
+          echo "OS_VERSION=$_os_name_-$_os_version_-$_os_arch_" >> $GITHUB_ENV;
         else
           _os_release_file_="/etc/os-release"
           if [ -f $_os_release_file_ ]; then
@@ -64,7 +65,8 @@ jobs:
             echo "-2-";
                _os_name_=$(cat $_os_release_file_ | grep         "^ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \");
             _os_version_=$(cat $_os_release_file_ | grep "^VERSION_ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \");
-            echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV;
+            _os_arch_=$(uname -m);
+            echo "OS_VERSION=$_os_name_-$_os_version_-$_os_arch_" >> $GITHUB_ENV;
           fi
         fi
 
