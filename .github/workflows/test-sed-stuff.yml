@@ -1,4 +1,4 @@
-# 2024-06-25 23:10
+# 2025-11-27 23:30
 name: test-sed-stuff
 
 on:
@@ -37,9 +37,9 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - { name: "minimal"    , os: ubuntu-20.04 , dependencies: "-minimal"     , options: ""             }
+          - { name: "minimal"    , os: ubuntu-22.04 , dependencies: "-minimal"     , options: ""             }
           - { name: "minimal"    , os: ubuntu-latest, dependencies: "-minimal"     , options: ""             }
-          - { name: "minimal"    , os: macos-12     , dependencies: "-minimal"     , options: ""             }
+          - { name: "minimal"    , os: macos-13     , dependencies: "-minimal"     , options: ""             }
           - { name: "minimal"    , os: macos-latest , dependencies: "-minimal"     , options: ""             }
 
     #if: ${{ matrix.job.name }} != 'withPYTHON' || ${{ inputs.withPYTHON }}
@@ -99,3 +99,36 @@ jobs:
       shell: bash
       run: |
         grep "ReplaceStrings" far2l/src/macro/macro.cpp
+
+    - name: extra scripts
+      continue-on-error: true
+      shell: bash
+      run: |
+        if [ -d bins/extra-scripts ]; then
+          cp bins/extra-scripts/*.sh far2l/bootstrap || true;
+          cp bins/extra-scripts/*.1  far2l/bootstrap || true;
+        fi
+
+    - name: Prepare for package 1
+      continue-on-error: true
+      working-directory: '${{github.workspace}}'
+      shell: bash
+      run: |
+        mkdir -p _build/install;
+        cp far2l/bootstrap/*.sh _build/install;
+        pushd _build/install;
+        ls -la;
+        popd
+
+    - name: Prepare for package 2
+      continue-on-error: true
+      working-directory: '${{github.workspace}}/_build/install'
+      shell: bash
+      run: |
+        echo 'Prepare for package';
+        echo "Version: " ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }} > 00-info.txt;
+        if [ -f neofetch.sh ]; then
+          bash neofetch.sh --stdout >> 00-info.txt;
+        fi
+        cat 00-info.txt;
+        tree;
