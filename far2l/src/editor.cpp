@@ -359,9 +359,7 @@ void Editor::ShowEditor(int CurLineOnly)
 	if (m_bWordWrap && CurLine)
 	{
 		m_CurVisualLineInLogicalLine = FindVisualLine(CurLine, CurLine->GetCurPos());
-	}
-	if (m_bWordWrap && CurLine)
-	{
+
 		// Проверяем, видим ли мы курсор на экране
 		bool is_cursor_visible = false;
 		Edit* scan_line = m_TopScreenLogicalLine;
@@ -401,12 +399,11 @@ void Editor::ShowEditor(int CurLineOnly)
 	}
 	if (Locked() || !TopList)
 		return;
-	if (m_bWordWrap) {
-		CurLineOnly = FALSE;
-	}
 
 	if (m_bWordWrap)
 	{
+		CurLineOnly = FALSE;
+
 		// Centralized correction logic to prevent scrolling past the end of the file.
 		int ScreenHeight = Y2 - Y1 + 1;
 		int LinesBelow = GetVisualLinesBelow(m_TopScreenLogicalLine, m_TopScreenVisualLine);
@@ -562,7 +559,7 @@ void Editor::ShowEditor(int CurLineOnly)
 			ShowString.GetSelection(dbg_s, db_e);
 
 			// --- Специальная отрисовка для выделенных пустых строк ---
-			if (m_bWordWrap && CurLogicalLine->GetLength() == 0)
+			if (CurLogicalLine->GetLength() == 0)
 			{
 				int RealSelStart, RealSelEnd;
 				CurLogicalLine->GetRealSelection(RealSelStart, RealSelEnd);
@@ -577,7 +574,7 @@ void Editor::ShowEditor(int CurLineOnly)
 
 			bool background_filled = false;
 			// Special handling for syntax highlighting on empty visual lines
-			if (m_bWordWrap && VisualLineStart == VisualLineEnd)
+			if (VisualLineStart == VisualLineEnd)
 			{
 				ColorItem current_ci;
 
@@ -611,13 +608,10 @@ void Editor::ShowEditor(int CurLineOnly)
 
 					if (ci.StartPos != -1 || ci.EndPos != -1) // Standard color item
 					{
-						if (m_bWordWrap)
+						// Heuristic: if the color covers the entire content of the visible portion, assume it's a background fill.
+						if (ci.StartPos <= VisualLineStart && ci.EndPos >= VisualLineEnd - 1)
 						{
-							// Heuristic: if the color covers the entire content of the visible portion, assume it's a background fill.
-							if (ci.StartPos <= VisualLineStart && ci.EndPos >= VisualLineEnd - 1)
-							{
-								is_full_visual_line_coverage = true;
-							}
+							is_full_visual_line_coverage = true;
 						}
 
 						new_ci.StartPos -= VisualLineStart;
@@ -625,7 +619,7 @@ void Editor::ShowEditor(int CurLineOnly)
 
 						if (new_ci.StartPos < 0) new_ci.StartPos = 0;
 
-						if (m_bWordWrap && is_full_visual_line_coverage)
+						if (is_full_visual_line_coverage)
 						{
 							// Force EndPos large to cause DrawColor/ApplyColor to fill to the screen edge (via its internal clamping to X2).
 							new_ci.EndPos = FULL_LINE_END_POS_HINT;
@@ -637,11 +631,8 @@ void Editor::ShowEditor(int CurLineOnly)
 					}
 					else // Special case for {-1, -1} background element
 					{
-						if (m_bWordWrap)
-						{
-							new_ci.StartPos = 0;
-							new_ci.EndPos = FULL_LINE_END_POS_HINT;
-						}
+						new_ci.StartPos = 0;
+						new_ci.EndPos = FULL_LINE_END_POS_HINT;
 					}
 
 					if (new_ci.StartPos <= new_ci.EndPos)
@@ -679,7 +670,7 @@ void Editor::ShowEditor(int CurLineOnly)
 			else // This 'else' corresponds to 'if (!background_filled)'
 			{
 				// Even if background was filled, we might need to draw our fake selection cursor on top of it.
-				if (m_bWordWrap && CurLogicalLine->GetLength() == 0)
+				if (CurLogicalLine->GetLength() == 0)
 				{
 					int RealSelStart, RealSelEnd;
 					CurLogicalLine->GetRealSelection(RealSelStart, RealSelEnd);
@@ -1183,8 +1174,7 @@ int64_t Editor::VMProcess(MacroOpcode OpCode, void *vParam, int64_t iParam)
 				}
 				case 4:		// UnMark sel block
 				{
-					bool NeedRedraw = BlockStart || VBlockStart;
-					UnmarkBlock();
+					auto NeedRedraw = UnmarkBlock();
 					UnmarkMacroBlock();
 
 					if (NeedRedraw)
@@ -1257,7 +1247,7 @@ int Editor::ProcessKey(FarKey Key)
 	_KEYMACRO(SysLog(L"Key=%ls", _FARKEY_ToName(Key)));
 	int CurPos, CurVisPos, I;
 	CurPos = CurLine->GetCurPos();
-	CurVisPos = GetLineCurPos();
+	CurVisPos = CurLine->GetCellCurPos();
 	const bool isk = IsShiftKey(Key);
 	_SVS(SysLog(L"[%d] isk=%d", __LINE__, isk));
 
@@ -1317,7 +1307,7 @@ int Editor::ProcessKey(FarKey Key)
 
 				for (size_t I = 0; I < ARRAYSIZE(UnmarkKeys); I++)
 					if (Key == UnmarkKeys[I]) {
-						UnmarkBlock();
+						UnmarkBlockAndShowIt();
 						break;
 					}
 			} else {
@@ -1327,8 +1317,9 @@ int Editor::ProcessKey(FarKey Key)
 				BlockStart->GetRealSelection(StartSel, EndSel);
 				_SVS(SysLog(L"[%d] PersistentBlocks! StartSel=%d, EndSel=%d", __LINE__, StartSel, EndSel));
 
-				if (StartSel == -1 || StartSel == EndSel)
-					UnmarkBlock();
+				if (StartSel == -1 || StartSel == EndSel) {
+					UnmarkBlockAndShowIt();
+				}
 			}
 		}
 	}
@@ -1388,7 +1379,7 @@ int Editor::ProcessKey(FarKey Key)
 			_SVS(SysLog(L"[%d] SelStart=%d, SelEnd=%d", __LINE__, SelStart, SelEnd));
 
 			if (!Flags.Check(FEDITOR_MARKINGBLOCK)) {
-				UnmarkBlock();
+				UnmarkBlockAndShowIt();
 				Flags.Set(FEDITOR_MARKINGBLOCK);
 				BlockStart = CurLine;
 				BlockStartLine = NumLine;
@@ -1411,10 +1402,6 @@ int Editor::ProcessKey(FarKey Key)
 		case KEY_CTRLSHIFTNUMPAD9:
 		case KEY_CTRLSHIFTHOME:
 		case KEY_CTRLSHIFTNUMPAD7: {
-			{
-				int DbgSelStart, DbgSelEnd;
-				CurLine->GetRealSelection(DbgSelStart, DbgSelEnd);
-			}
 
 			Lock();
 			Pasting++;
@@ -1435,10 +1422,6 @@ int Editor::ProcessKey(FarKey Key)
 		case KEY_CTRLSHIFTNUMPAD3:
 		case KEY_CTRLSHIFTEND:
 		case KEY_CTRLSHIFTNUMPAD1: {
-			{
-				int DbgSelStart, DbgSelEnd;
-				CurLine->GetRealSelection(DbgSelStart, DbgSelEnd);
-			}
 
 			Lock();
 			Pasting++;
@@ -1907,9 +1890,7 @@ int Editor::ProcessKey(FarKey Key)
 			} else		// расширяем выделение
 			{
 				CurLine->Select(SelStart, -1);
-				if (m_bWordWrap) {
-					int DbgSelStart, DbgSelEnd; CurLine->GetRealSelection(DbgSelStart, DbgSelEnd);
-				}
+
 				SelStart = CurLine->m_next->CellPosToReal(0);
 				SelEnd = CurLine->m_next->CellPosToReal(CurPos);
 			}
@@ -1926,9 +1907,7 @@ int Editor::ProcessKey(FarKey Key)
 			//				CurLine->m_next->Select(-1,0);
 			//			else
 			CurLine->m_next->Select(SelStart, SelEnd);
-			if (m_bWordWrap) {
-				int DbgSelStart, DbgSelEnd; CurLine->m_next->GetRealSelection(DbgSelStart, DbgSelEnd);
-			}
+
 			Down();
 			Show();
 			return TRUE;
@@ -1948,7 +1927,7 @@ int Editor::ProcessKey(FarKey Key)
 				}
 
 				if (!Flags.Check(FEDITOR_MARKINGBLOCK)) {
-					UnmarkBlock();
+					UnmarkBlockAndShowIt();
 					Flags.Set(FEDITOR_MARKINGBLOCK);
 					BlockStart = CurLine;
 					BlockStartLine = NumLine;
@@ -2095,12 +2074,12 @@ int Editor::ProcessKey(FarKey Key)
 		}
 		case KEY_CTRLA: {
 			UnmarkBlock();
-			SelectAll();
+			SelectAll(); // Show(); inside
 			return TRUE;
 		}
 		case KEY_CTRLU: {
 			UnmarkMacroBlock();
-			UnmarkBlock();
+			UnmarkBlockAndShowIt();
 			return TRUE;
 		}
 		case KEY_CTRLC:
@@ -2193,12 +2172,12 @@ int Editor::ProcessKey(FarKey Key)
 				}
 				MaxRightPos = CurLine->GetCellCurPos();
 				Show();
-				if (m_bWordWrap) {
-					int v_start_pos, v_end_pos;
-					CurLine->GetVisualLine(m_CurVisualLineInLogicalLine, v_start_pos, v_end_pos);
-					int visual_line_start_cell = CurLine->RealPosToCell(v_start_pos);
-					m_WordWrapMaxRightPos = CurLine->GetCellCurPos() - visual_line_start_cell;
-				}
+
+				int v_start_pos, v_end_pos;
+				CurLine->GetVisualLine(m_CurVisualLineInLogicalLine, v_start_pos, v_end_pos);
+				int visual_line_start_cell = CurLine->RealPosToCell(v_start_pos);
+				m_WordWrapMaxRightPos = CurLine->GetCellCurPos() - visual_line_start_cell;
+
 			} else { // Original logic
 				if (!CurPos && CurLine->m_prev) {
 					Up();
@@ -2229,12 +2208,12 @@ int Editor::ProcessKey(FarKey Key)
 				}
 				MaxRightPos = CurLine->GetCellCurPos();
 				Show();
-				if (m_bWordWrap) {
-					int v_start_pos, v_end_pos;
-					CurLine->GetVisualLine(m_CurVisualLineInLogicalLine, v_start_pos, v_end_pos);
-					int visual_line_start_cell = CurLine->RealPosToCell(v_start_pos);
-					m_WordWrapMaxRightPos = CurLine->GetCellCurPos() - visual_line_start_cell;
-				}
+
+				int v_start_pos, v_end_pos;
+				CurLine->GetVisualLine(m_CurVisualLineInLogicalLine, v_start_pos, v_end_pos);
+				int visual_line_start_cell = CurLine->RealPosToCell(v_start_pos);
+				m_WordWrapMaxRightPos = CurLine->GetCellCurPos() - visual_line_start_cell;
+
 			} else {
 				// Original logic for non-word-wrap
 				if (CurLine->GetCurPos() >= CurLine->GetLength() && CurLine->m_next && !EdOpt.CursorBeyondEOL)
@@ -2833,7 +2812,7 @@ case KEY_CTRLNUMPAD3: {
 			}
 			Pasting--;
 			Show();
-			//_D(SysLog(L"VBlockX=%i, VBlockSizeX=%i, GetLineCurPos=%i",VBlockX,VBlockSizeX,GetLineCurPos()));
+			//_D(SysLog(L"VBlockX=%i, VBlockSizeX=%i, GetLineCurPos=%i",VBlockX,VBlockSizeX,CurLine->GetCellCurPos()));
 			//_D(SysLog(L"~~~~~~~~~~~~~~~~ KEY_ALTLEFT END, VBlockY=%i:%i, VBlockX=%i:%i",VBlockY,VBlockSizeY,VBlockX,VBlockSizeX));
 			return TRUE;
 		}
@@ -2852,7 +2831,7 @@ case KEY_CTRLNUMPAD3: {
 			if (!Flags.Check(FEDITOR_MARKINGVBLOCK))
 				BeginVBlockMarking();
 
-			//_D(SysLog(L"---------------- KEY_ALTRIGHT, getLineCurPos=%i",GetLineCurPos()));
+			//_D(SysLog(L"---------------- KEY_ALTRIGHT, getLineCurPos=%i",CurLine->GetCellCurPos()));
 			Pasting++;
 			{
 				int Delta;
@@ -2885,7 +2864,7 @@ case KEY_CTRLNUMPAD3: {
 				}
 
 				ProcessKey(KEY_RIGHT);
-				//_D(SysLog(L"VBlockX=%i, VBlockSizeX=%i, GetLineCurPos=%i",VBlockX,VBlockSizeX,GetLineCurPos()));
+				//_D(SysLog(L"VBlockX=%i, VBlockSizeX=%i, GetLineCurPos=%i",VBlockX,VBlockSizeX,CurLine->GetCellCurPos()));
 			}
 			Pasting--;
 			Show();
@@ -3282,12 +3261,12 @@ case KEY_CTRLNUMPAD3: {
 				CurLine->SetCurPos(targetPos);
 
 				Show();
-				if (m_bWordWrap) {
-					int v_start_pos, v_end_pos;
-					CurLine->GetVisualLine(m_CurVisualLineInLogicalLine, v_start_pos, v_end_pos);
-					int visual_line_start_cell = CurLine->RealPosToCell(v_start_pos);
-					m_WordWrapMaxRightPos = CurLine->GetCellCurPos() - visual_line_start_cell;
-				}
+
+				int v_start_pos, v_end_pos;
+				CurLine->GetVisualLine(m_CurVisualLineInLogicalLine, v_start_pos, v_end_pos);
+				int visual_line_start_cell = CurLine->RealPosToCell(v_start_pos);
+				m_WordWrapMaxRightPos = CurLine->GetCellCurPos() - visual_line_start_cell;
+
 				return TRUE;
 			}
 		}
@@ -3598,11 +3577,14 @@ int Editor::ProcessMouse(MOUSE_EVENT_RECORD *MouseEvent)
 		return TRUE;
 	}
 
+	if ((MouseEvent->dwButtonState & FROM_LEFT_1ST_BUTTON_PRESSED) == 0) {
+		MouseSelStartingLine = -1;
+	}
+
 	// $ 28.12.2000 VVM - Щелчок мышкой снимает непостоянный блок всегда
 	if ((MouseEvent->dwButtonState & 3) && !(MouseEvent->dwEventFlags & MOUSE_MOVED)) {
-		if ((!EdOpt.PersistentBlocks) && (BlockStart || VBlockStart)) {
-			UnmarkBlock();
-			Show();
+		if (!EdOpt.PersistentBlocks) {
+			UnmarkBlockAndShowIt();
 		}
 	}
 
@@ -3692,9 +3674,27 @@ int Editor::ProcessMouse(MOUSE_EVENT_RECORD *MouseEvent)
 
 			if (TargetLine)
 			{
+				// Снимаем любое предыдущее выделение при новом клике.
+				// UnmarkBlock() должен вызываться только при первом клике, а не при каждом движении
+				if ((MouseEvent->dwEventFlags & MOUSE_MOVED) == 0) {
+					UnmarkBlockAndShowIt();
+				}
 				CurLine = TargetLine;
 				NumLine = CalcDistance(TopList, CurLine, -1);
 				CurLine->SetCurPos(TargetPos);
+				if (MouseSelStartingLine == -1) {
+					MouseSelStartingLine = NumLine;
+					MouseSelStartingPos = TargetPos;
+				} else {
+					const bool SelVBlock = (MouseEvent->dwControlKeyState & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED)) != 0;
+					if (MouseSelStartingLine < NumLine || (MouseSelStartingLine == NumLine && TargetPos >= MouseSelStartingPos)) {
+						MarkBlock(SelVBlock, MouseSelStartingLine, MouseSelStartingPos,
+							TargetPos - MouseSelStartingPos, NumLine + 1 - MouseSelStartingLine);
+					} else {
+						MarkBlock(SelVBlock, NumLine, TargetPos,
+							MouseSelStartingPos - TargetPos, MouseSelStartingLine + 1 - NumLine);
+					}
+				}
 				if (m_bWordWrap)
 				{
 					m_CurVisualLineInLogicalLine = FindVisualLine(CurLine, CurLine->GetCurPos());
@@ -3702,11 +3702,6 @@ int Editor::ProcessMouse(MOUSE_EVENT_RECORD *MouseEvent)
 					CurLine->GetVisualLine(m_CurVisualLineInLogicalLine, v_start, v_end);
 					m_WordWrapMaxRightPos = CurLine->GetCellCurPos() - CurLine->RealPosToCell(v_start);
 					MaxRightPos = CurLine->GetCellCurPos();
-				}
-				// Снимаем любое предыдущее выделение при новом клике.
-		        // UnmarkBlock() должен вызываться только при первом клике, а не при каждом движении
-        		if (!(MouseEvent->dwEventFlags & MOUSE_MOVED)) {
-					UnmarkBlock();
 				}
 				Show();
 			}
@@ -4035,11 +4030,6 @@ void Editor::DeleteString(Edit *DelPtr, int LineNumber, int DeleteLast, int Undo
 
 void Editor::InsertString()
 {
-	if (m_bWordWrap) {
-		const wchar_t* str_addr;
-		int str_len;
-		CurLine->GetBinaryString(&str_addr, nullptr, str_len);
-	}
 	if (Flags.Check(FEDITOR_LOCKMODE))
 		return;
 
@@ -4583,8 +4573,9 @@ BOOL Editor::Search(int Next)
 
 	// LastSuccessfulReplaceMode=ReplaceMode;
 
-	if (!EdOpt.PersistentBlocks || (SelectFound && !ReplaceMode))
-		UnmarkBlock();
+	if (!EdOpt.PersistentBlocks || (SelectFound && !ReplaceMode)) {
+		UnmarkBlockAndShowIt();
+	}
 
 	{
 		// SaveScreen SaveScr;
@@ -4657,7 +4648,7 @@ BOOL Editor::Search(int Next)
 				if (SelectFound && !ReplaceMode) {
 					Pasting++;
 					Lock();
-					UnmarkBlock();
+					UnmarkBlockAndShowIt();
 					Flags.Set(FEDITOR_MARKINGBLOCK);
 					int iFoundPos = CurPtr->GetCurPos();
 					CurPtr->Select(iFoundPos, iFoundPos + SearchLength);
@@ -4853,7 +4844,7 @@ BOOL Editor::Search(int Next)
 							CurLine->SetCurPos(CurPos + RStrLen);
 
 							if (SelectFound && !ReplaceMode) {
-								UnmarkBlock();
+								UnmarkBlockAndShowIt();
 								Flags.Set(FEDITOR_MARKINGBLOCK);
 								CurPtr->Select(CurPos, CurPos + RStrLen);
 								BlockStart = CurPtr;
@@ -4940,7 +4931,7 @@ void Editor::Paste(const wchar_t *Src)
 		Flags.Set(FEDITOR_NEWUNDO);
 		TextChanged(1);
 		int SaveOvertype = Flags.Check(FEDITOR_OVERTYPE);
-		UnmarkBlock();
+		UnmarkBlockAndShowIt();
 		Pasting++;
 		Lock();
 
@@ -5278,10 +5269,74 @@ void Editor::DeleteBlock()
 	BlockStart = nullptr;
 }
 
-void Editor::UnmarkBlock()
+bool Editor::MarkBlock(bool SelVBlock, int SelStartLine, int SelStartPos, int SelWidth, int SelHeight)
+{
+	fprintf(stderr, "Editor::MarkBlock: VBlock=%d StartLine=%d StartPos=%d Width=%d Height=%d\n",
+		SelVBlock, SelStartLine, SelStartPos, SelWidth, SelHeight);
+
+	Edit *CurPtr = GetStringByNumber(SelStartLine);
+
+	if (!CurPtr) {
+		fprintf(stderr, "Editor::MarkBlock: fail cuz StartLine=%d not found\n", SelStartLine);
+		return false;
+	}
+	if (SelHeight <= 0 || SelStartPos < 0) {
+		fprintf(stderr, "Editor::MarkBlock: fail cuz Height=%d <= 0 || StartPos=%d < 0\n", SelHeight, SelStartPos);
+		return false;
+	}
+
+	UnmarkBlock();
+
+	if (SelVBlock) {
+		Flags.Set(FEDITOR_MARKINGVBLOCK);
+		VBlockStart = CurPtr;
+
+		if ((BlockStartLine = SelStartLine) == -1)
+			BlockStartLine = NumLine;
+
+		VBlockX = CurPtr->RealPosToCell(SelStartPos);
+
+		if ((VBlockY = SelStartLine) == -1)
+			VBlockY = NumLine;
+
+		auto LastPtr = CurPtr;
+		for (int i = SelHeight; --i > 0 && LastPtr->m_next; ) {
+			LastPtr = LastPtr->m_next;
+		}
+		VBlockSizeX = LastPtr->RealPosToCell(SelStartPos + SelWidth) - VBlockX;
+		VBlockSizeY = SelHeight;
+
+		if (VBlockSizeX < 0) {
+			VBlockSizeX = -VBlockSizeX;
+			VBlockX-= VBlockSizeX;
+
+			if (VBlockX < 0)
+				VBlockX = 0;
+		}
+
+	} else {
+		Flags.Set(FEDITOR_MARKINGBLOCK);
+		BlockStart = CurPtr;
+
+		if ((BlockStartLine = SelStartLine) == -1)
+			BlockStartLine = NumLine;
+
+		for (int i = 0; i < SelHeight && CurPtr; i++) {
+			int SelStart = i ? 0 : SelStartPos;
+			int SelEnd = (i < SelHeight - 1) ? -1 : SelStartPos + SelWidth;
+			CurPtr->Select(SelStart, SelEnd);
+			CurPtr = CurPtr->m_next;
+			// ранее было if (!CurPtr) return FALSE
+		}
+	}
+
+	return true;
+}
+
+bool Editor::UnmarkBlock()
 {
 	if (!BlockStart && !VBlockStart)
-		return;
+		return false;
 
 	VBlockStart = nullptr;
 	_SVS(SysLog(L"[%d] Editor::UnmarkBlock()", __LINE__));
@@ -5313,7 +5368,13 @@ void Editor::UnmarkBlock()
 	}
 
 	BlockStart = nullptr;
-	Show();
+	return true;
+}
+
+void Editor::UnmarkBlockAndShowIt()
+{
+	if (UnmarkBlock())
+		Show();
 }
 
 /*
@@ -5349,8 +5410,8 @@ void Editor::UnmarkEmptyBlock()
 				Block = Block->m_next;
 			}
 
-		if (!Lines)			// если выделено ноль символов в ширину, то
-			UnmarkBlock();	// перестанем морочить голову и снимем выделение
+		if (!Lines)                 // если выделено ноль символов в ширину,
+			UnmarkBlockAndShowIt(); // то перестанем морочить голову и снимем выделение
 	}
 }
 
@@ -5593,7 +5654,7 @@ void Editor::Undo(int redo)
 	if (level)
 		uend = ustart;
 
-	UnmarkBlock();
+	UnmarkBlockAndShowIt();
 	EditorUndoData *ud = ustart;
 
 	for (;;) {
@@ -6036,7 +6097,7 @@ void Editor::VPaste(wchar_t *ClipText)
 		Flags.Set(FEDITOR_NEWUNDO);
 		TextChanged(1);
 		int SaveOvertype = Flags.Check(FEDITOR_OVERTYPE);
-		UnmarkBlock();
+		UnmarkBlockAndShowIt();
 		Pasting++;
 		Lock();
 
@@ -6494,86 +6555,14 @@ int Editor::EditorControl(int Command, void *Param)
 		case ECTL_SELECT: {
 			if (Param) {
 				EditorSelect *Sel = (EditorSelect *)Param;
-				_ECTLLOG(SysLog(L"EditorSelect{"));
-				_ECTLLOG(SysLog(L"  BlockType     =%ls (%d)",
-						(Sel->BlockType == BTYPE_NONE
-										? L"BTYPE_NONE"
-										: (Sel->BlockType == BTYPE_STREAM
-														? L""
-														: (Sel->BlockType == BTYPE_COLUMN ? L"BTYPE_COLUMN"
-																						: L"BTYPE_?????"))),
-						Sel->BlockType));
-				_ECTLLOG(SysLog(L"  BlockStartLine=%d", Sel->BlockStartLine));
-				_ECTLLOG(SysLog(L"  BlockStartPos =%d", Sel->BlockStartPos));
-				_ECTLLOG(SysLog(L"  BlockWidth    =%d", Sel->BlockWidth));
-				_ECTLLOG(SysLog(L"  BlockHeight   =%d", Sel->BlockHeight));
-				_ECTLLOG(SysLog(L"}"));
-
-				if (Sel->BlockType == BTYPE_NONE || Sel->BlockStartPos == -1) {
+				if (Sel->BlockType == BTYPE_NONE || Sel->BlockStartPos < 0) {
+					fprintf(stderr, "ECTL_SELECT: unmark cuz Type=%d StartPos=%d\n", Sel->BlockType, Sel->BlockStartPos);
 					UnmarkBlock();
 					return TRUE;
 				}
-
-				if (Sel->BlockHeight < 1) {
-					_ECTLLOG(SysLog(L"Error: EditorSelect::BlockHeight < 1"));
-					return FALSE;
-				}
-
-				Edit *CurPtr = GetStringByNumber(Sel->BlockStartLine);
-
-				if (!CurPtr) {
-					_ECTLLOG(SysLog(L"Error: start line BlockStartLine=%d not found, GetStringByNumber(%d) "
-									L"return nullptr",
-							Sel->BlockStartLine, Sel->BlockStartLine));
-					return FALSE;
-				}
-
-				UnmarkBlock();
-
-				if (Sel->BlockType == BTYPE_STREAM) {
-					Flags.Set(FEDITOR_MARKINGBLOCK);
-					BlockStart = CurPtr;
-
-					if ((BlockStartLine = Sel->BlockStartLine) == -1)
-						BlockStartLine = NumLine;
-
-					for (int i = 0; i < Sel->BlockHeight; i++) {
-						int SelStart = i ? 0 : Sel->BlockStartPos;
-						int SelEnd = (i < Sel->BlockHeight - 1) ? -1 : Sel->BlockStartPos + Sel->BlockWidth;
-						CurPtr->Select(SelStart, SelEnd);
-						CurPtr = CurPtr->m_next;
-
-						if (!CurPtr)
-							return TRUE;	// ранее было FALSE
-					}
-				} else if (Sel->BlockType == BTYPE_COLUMN) {
-					Flags.Set(FEDITOR_MARKINGVBLOCK);
-					VBlockStart = CurPtr;
-
-					if ((BlockStartLine = Sel->BlockStartLine) == -1)
-						BlockStartLine = NumLine;
-
-					VBlockX = Sel->BlockStartPos;
-
-					if ((VBlockY = Sel->BlockStartLine) == -1)
-						VBlockY = NumLine;
-
-					VBlockSizeX = Sel->BlockWidth;
-					VBlockSizeY = Sel->BlockHeight;
-
-					if (VBlockSizeX < 0) {
-						VBlockSizeX = -VBlockSizeX;
-						VBlockX-= VBlockSizeX;
-
-						if (VBlockX < 0)
-							VBlockX = 0;
-					}
-				}
-
-				return TRUE;
+				return MarkBlock(Sel->BlockType == BTYPE_COLUMN, Sel->BlockStartLine, Sel->BlockStartPos, Sel->BlockWidth, Sel->BlockHeight);
 			}
-
-			_ECTLLOG(SysLog(L"Error: !Param"));
+			fprintf(stderr, "ECTL_SELECT: !Param\n");
 			break;
 		}
 		case ECTL_REDRAW: {
@@ -7247,14 +7236,9 @@ void Editor::SetReplaceMode(int Mode)
 	::ReplaceMode = Mode;
 }
 
-int Editor::GetLineCurPos()
-{
-	return CurLine->GetCellCurPos();
-}
-
 void Editor::BeginVBlockMarking()
 {
-	UnmarkBlock();
+	UnmarkBlockAndShowIt();
 	VBlockStart = CurLine;
 	VBlockX = CurLine->GetCellCurPos();
 	VBlockSizeX = 0;
@@ -7267,7 +7251,7 @@ void Editor::BeginVBlockMarking()
 
 void Editor::AdjustVBlock(int PrevX)
 {
-	int x = GetLineCurPos();
+	int x = CurLine->GetCellCurPos();
 	int c2;
 
 	//_D(SysLog(L"AdjustVBlock, x=%i, vblock is VBlockY=%i:%i, VBlockX=%i:%i, PrevX=%i",x,VBlockY,VBlockSizeY,VBlockX,VBlockSizeX,PrevX));
@@ -7429,6 +7413,14 @@ void Editor::SetWordWrap(int NewMode)
 	if ((NewMode != 0) != m_bWordWrap)
 	{
 		m_bWordWrap = (NewMode != 0);
+
+		// Clear vertical block selection when switching wrap modes
+		// Vertical blocks don't make sense in wrap mode
+		if (VBlockStart)
+		{
+			VBlockStart = nullptr;
+			Flags.Clear(FEDITOR_MARKINGVBLOCK);
+		}
 
 		if (m_bWordWrap) // Turning ON
 		{
