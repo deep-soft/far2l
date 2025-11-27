@@ -1,5 +1,5 @@
 
-# 2025-11-27 22:00
+# 2025-11-28 00:10
 name: act-Release -Lin-Mac
 
 on:
@@ -60,21 +60,21 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - { name: "min"     , os: ubuntu-22.04 , dependencies: "-minimal"     , options: "-DUSEWX=no  -DPYTHON=no"  }
-          - { name: "nWXnPY"  , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=no"  }
-          - { name: "wWXnPY"  , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=no"  }
-          - { name: "nWXwPY"  , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=yes" }
-          - { name: "wWXwPY"  , os: ubuntu-22.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=yes" }
-          - { name: "min"     , os: ubuntu-24.04 , dependencies: "-minimal"     , options: "-DUSEWX=no  -DPYTHON=no"  }
-          - { name: "nWXnPY"  , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=no"  }
-          - { name: "wWXnPY"  , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=no"  }
-          - { name: "nWXwPY"  , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=yes" }
-          - { name: "wWXwPY"  , os: ubuntu-24.04 , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=yes" }
-          # - { name: "minimal"    , os: macos-13     , dependencies: "-minimal"     , options: ""             }
-          # - { name: "withWX"     , os: macos-13     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
-          # - { name: "noWX"       , os: macos-13     , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
-          # - { name: "withPYTHON" , os: macos-13     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
-          # - { name: "macos15"    , os: macos-15     , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          - { name: "min"     , os: ubuntu-22.04  , dependencies: "-minimal"     , options: "-DUSEWX=no  -DPYTHON=no"  }
+          - { name: "nWXnPY"  , os: ubuntu-22.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=no"  }
+          - { name: "wWXnPY"  , os: ubuntu-22.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=no"  }
+          - { name: "nWXwPY"  , os: ubuntu-22.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=yes" }
+          - { name: "wWXwPY"  , os: ubuntu-22.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=yes" }
+          - { name: "min"     , os: ubuntu-24.04  , dependencies: "-minimal"     , options: "-DUSEWX=no  -DPYTHON=no"  }
+          - { name: "nWXnPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=no"  }
+          - { name: "wWXnPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=no"  }
+          - { name: "nWXwPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=yes" }
+          - { name: "wWXwPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=yes" }
+          # - { name: "mini"    , os: macos-13      , dependencies: "-minimal"     , options: ""             }
+          # - { name: "wWX"     , os: macos-13      , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
+          # - { name: "nWX"     , os: macos-13      , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
+          # - { name: "wPY"     , os: macos-13      , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          # - { name: "m15"     , os: macos-15-intel, dependencies: "-smb-nfs-neon", options: "-DPYTHON=no"  }
 
     #if: ${{ matrix.job.name }} != 'wPY' || ${{ inputs.wPY }}
     steps:
@@ -90,7 +90,8 @@ jobs:
         if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
           _os_name_="macos";
           _os_version_=$(sw_vers | grep ProductVersion | cut -d':' -f2 | xargs echo -n);
-          echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV;
+          _os_arch_=$(uname -m);
+          echo "OS_VERSION=$_os_name_-$_os_version_-$_os_arch_" >> $GITHUB_ENV;
         else
           _os_release_file_="/etc/os-release"
           if [ -f $_os_release_file_ ]; then
@@ -99,7 +100,8 @@ jobs:
             echo "-2-";
                _os_name_=$(cat $_os_release_file_ | grep         "^ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \");
             _os_version_=$(cat $_os_release_file_ | grep "^VERSION_ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \");
-            echo "OS_VERSION=$_os_name_-$_os_version_" >> $GITHUB_ENV;
+            _os_arch_=$(uname -m);
+            echo "OS_VERSION=$_os_name_-$_os_version_-$_os_arch_" >> $GITHUB_ENV;
           fi
         fi
 
@@ -258,7 +260,7 @@ jobs:
           brew unlink libxau && brew link libxau;
           ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
         fi
-        if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
+        if [[ ${{ matrix.job.os }} =~ "macos-15-intel" ]]; then
           brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive;
         fi
 
@@ -403,6 +405,3 @@ jobs:
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C $BUILD_TYPE
-
-
-
