@@ -109,7 +109,10 @@ Editor::Editor(ScreenObject *pOwner, bool DialogUsed)
 	LastGetLine(nullptr),
 	LastGetLineNumber(0),
 	SaveTabSettings(false),
-	m_MouseButtonIsHeld(false)
+	m_MouseButtonIsHeld(false),
+	m_CachedTotalLines(0),
+	m_CachedLineNumWidth(0),
+	m_LineCountDirty(true)
 {
 	_KEYMACRO(SysLog(L"Editor::Editor()"));
 	_KEYMACRO(SysLog(1));
@@ -245,6 +248,12 @@ int Editor::CalculateLineNumberWidth()
 		return 0;
 	}
 
+	// Use cached value if available
+	if (!m_LineCountDirty) {
+		return m_CachedLineNumWidth;
+	}
+
+	// Recalculate when cache is dirty
 	int TotalLines = CalculateTotalLines();
 	int LineNumWidth = 1;
 	int temp = TotalLines;
@@ -256,6 +265,12 @@ int Editor::CalculateLineNumberWidth()
 		LineNumWidth = 4;
 	}
 	LineNumWidth += 1;  // Add space after numbers
+
+	// Update cache
+	m_CachedTotalLines = TotalLines;
+	m_CachedLineNumWidth = LineNumWidth;
+	m_LineCountDirty = false;
+
 	return LineNumWidth;
 }
 
@@ -274,6 +289,7 @@ void Editor::FreeAllocatedData(bool FreeUndo)
 	m_TopScreenLogicalLine = nullptr;
 	m_TopScreenVisualLine = 0;
 	m_CurVisualLineInLogicalLine = 0;
+	m_LineCountDirty = true;  // Invalidate line number cache
 	ClearStackBookmarks();
 	TopList = EndList = CurLine = nullptr;
 	NumLastLine = 0;
@@ -652,9 +668,6 @@ void Editor::ShowEditor(int CurLineOnly)
 			// We use a large relative index hint to force Edit::ApplyColor to fill up to XX2.
 			const int FULL_LINE_END_POS_HINT = 10000;
 
-			// Calculate line number offset for coordinate conversion
-			int LineNumOffset = CalculateLineNumberWidth();
-
 			for (size_t i = 0; CurLogicalLine->GetColor(&ci, i); ++i)
 			{
 				// Convert stored coordinates back to logical string positions for processing
@@ -664,8 +677,8 @@ void Editor::ShowEditor(int CurLineOnly)
 				int LogicalEndPos = ci.EndPos;
 
 				if (ci.StartPos != -1 && ci.EndPos != -1) {
-					LogicalStartPos = ci.StartPos - X1 - LineNumOffset;
-					LogicalEndPos = ci.EndPos - X1 - LineNumOffset;
+					LogicalStartPos = ci.StartPos - X1 ;
+					LogicalEndPos = ci.EndPos - X1 ;
 				}
 
 				if ((ci.StartPos == -1 && ci.EndPos == -1) || (LogicalStartPos < VisualLineEnd && LogicalEndPos >= VisualLineStart))
@@ -691,60 +704,22 @@ void Editor::ShowEditor(int CurLineOnly)
 						if (ClippedLogicalStart < VisualLineStart) ClippedLogicalStart = VisualLineStart;
 						if (ClippedLogicalEnd >= VisualLineEnd) ClippedLogicalEnd = VisualLineEnd - 1;
 
-						if (EdOpt.ShowLineNumbers) {
-							// With line numbers: Edit::ApplyColor expects ShowString-relative positions + offset
-							// 1. Convert to ShowString-relative (0-based within visual line content)
-							// 2. Add line number offset so Edit::ApplyColor positions correctly on screen
-							int ShowStringRelStart = ClippedLogicalStart - VisualLineStart;
-							int ShowStringRelEnd = ClippedLogicalEnd - VisualLineStart;
-							new_ci.StartPos = ShowStringRelStart + X1 + LineNumOffset;
-							new_ci.EndPos = ShowStringRelEnd + X1 + LineNumOffset;
-						} else {
-							// Without line numbers: Edit::ApplyColor expects ShowString-relative positions
-							new_ci.StartPos = ClippedLogicalStart - VisualLineStart;
-							new_ci.EndPos = ClippedLogicalEnd - VisualLineStart;
-						}
+						new_ci.StartPos = ClippedLogicalStart - VisualLineStart;
+						new_ci.EndPos = ClippedLogicalEnd - VisualLineStart;
 
 						// Apply boundary adjustments
-						if (EdOpt.ShowLineNumbers) {
-							// With line numbers: coordinates are ShowString-relative + offset
-							// Apply same boundary logic as without line numbers, but account for offset
-							int ShowStringRelStart = new_ci.StartPos - X1 - LineNumOffset;
-							int ShowStringRelEnd = new_ci.EndPos - X1 - LineNumOffset;
-
-							if (ShowStringRelStart < 0) {
-								ShowStringRelStart = 0;
-								new_ci.StartPos = ShowStringRelStart + X1 + LineNumOffset;
-							}
-
-							if (is_full_visual_line_coverage)
-							{
-								// Force EndPos large to cause DrawColor/ApplyColor to fill to the screen edge
-								new_ci.EndPos = FULL_LINE_END_POS_HINT;
-							}
-							else if (ShowStringRelEnd >= (VisualLineEnd - VisualLineStart))
-							{
-								ShowStringRelEnd = (VisualLineEnd - VisualLineStart) - 1;
-								new_ci.EndPos = ShowStringRelEnd + X1 + LineNumOffset;
-							}
-						} else {
-							// Without line numbers: ShowString-relative coordinates
-							if (new_ci.StartPos < 0) new_ci.StartPos = 0;
-
-							if (is_full_visual_line_coverage)
-							{
-								// Force EndPos large to cause DrawColor/ApplyColor to fill to the screen edge
-								new_ci.EndPos = FULL_LINE_END_POS_HINT;
-							}
-							else if (new_ci.EndPos >= (VisualLineEnd - VisualLineStart))
-							{
-								new_ci.EndPos = (VisualLineEnd - VisualLineStart) - 1;
-							}
+						if (is_full_visual_line_coverage)
+						{
+							// Force EndPos large to cause DrawColor/ApplyColor to fill to the screen edge
+							new_ci.EndPos = FULL_LINE_END_POS_HINT;
+						}
+						else if (new_ci.EndPos >= (VisualLineEnd - VisualLineStart))
+						{
+							new_ci.EndPos = (VisualLineEnd - VisualLineStart) - 1;
 						}
 					}
 					else // Special case for {-1, -1} background element
 					{
-						new_ci.StartPos = 0;
 						new_ci.EndPos = FULL_LINE_END_POS_HINT;
 					}
 
@@ -4093,6 +4068,7 @@ void Editor::DeleteString(Edit *DelPtr, int LineNumber, int DeleteLast, int Undo
 	}
 
 	NumLastLine--;
+	m_LineCountDirty = true;  // Invalidate line number cache
 
 	if (LastGetLine) {
 		if (LineNumber <= LastGetLineNumber) {
@@ -6788,11 +6764,8 @@ int Editor::EditorControl(int Command, void *Param)
 				_ECTLLOG(SysLog(L"}"));
 				ColorItem newcol{0};
 
-				// Calculate line number offset if needed
-				int LineNumOffset = CalculateLineNumberWidth();
-
-				newcol.StartPos = col->StartPos + (col->StartPos != -1 ? (X1 + LineNumOffset) : 0);
-				newcol.EndPos = col->EndPos + X1 + LineNumOffset;
+				newcol.StartPos = col->StartPos + (col->StartPos != -1 ? X1 : 0);
+				newcol.EndPos = col->EndPos + X1;
 				newcol.Color = col->Color;
 				Edit *CurPtr = GetStringByNumber(col->StringNumber);
 
@@ -6833,11 +6806,8 @@ int Editor::EditorControl(int Command, void *Param)
 					return FALSE;
 				}
 
-				// Calculate line number offset if needed
-				int LineNumOffset = CalculateLineNumberWidth();
-
-				col->StartPos = curcol.StartPos - X1 - LineNumOffset;
-				col->EndPos = curcol.EndPos - X1 - LineNumOffset;
+				col->StartPos = curcol.StartPos - X1;
+				col->EndPos = curcol.EndPos - X1;
 				col->Color = curcol.Color & 0xffff;
 				if (Command == ECTL_GETTRUECOLOR) {
 					EditorTrueColor *tcol = (EditorTrueColor *)Param;
@@ -7879,6 +7849,7 @@ Edit *Editor::InsertString(const wchar_t *lpwszStr, int nLength, Edit *pAfter, i
 		}
 
 		NumLastLine++;
+		m_LineCountDirty = true;  // Invalidate line number cache
 
 		if (AfterLineNumber < LastGetLineNumber) {
 			LastGetLineNumber++;
