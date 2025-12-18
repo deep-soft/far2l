@@ -229,7 +229,7 @@ void ImageView::SetupInitialScale(const int canvas_w, const int canvas_h)
 bool ImageView::EnsureReadyAndScaled()
 { // return true if ready image was re-scaled, return false if it wasn't changed by this function
 	assert(_scale > 0);
-	if (_ready_image_scale > 0 && fabs(_scale -_ready_image_scale) < 0.001) {
+	if (!_force_render && _ready_image_scale > 0 && fabs(_scale -_ready_image_scale) < 0.001) {
 		return false;
 	}
 	auto msec = GetProcessUptimeMSec();
@@ -240,6 +240,7 @@ bool ImageView::EnsureReadyAndScaled()
 	_ready_image_scale = _scale;
 	_rotated = 0;
 	_mirrored_h = _mirrored_v = false;
+	_force_render = false;
 	return true;
 }
 
@@ -324,7 +325,7 @@ bool ImageView::SendWholeImage(const SMALL_RECT *area, const Image &img)
 	}
 	msec = GetProcessUptimeMSec() - msec;
 	if (img.Size() >= SETIMG_ESTIMATION_SIZE_THRESHOLD && msec >= 1) {
-		const size_t cur_speed = std::max(img.Size() / msec, size_t(1));
+		const size_t cur_speed = std::max(size_t(img.Size() / msec), size_t(1));
 		size_t speed = s_avg_speed;
 		if (speed < cur_speed || (speed - cur_speed > speed / 4) || speed == 0) {
 			speed+= cur_speed;
@@ -469,7 +470,7 @@ bool ImageView::RenderImage()
 	bool out = true;
 	if (!scaled && _prev_left == src_left && _prev_top == src_top          // if image wasnt rescaled and
 			&& _dx == 0 && _dx == 0 && tformed != 0                        // centered but was mirrored or
-			&& ((tformed & WP_IMGTF_ROTATE_MASK) == WP_IMGTF_ROTATE0 ||    // rotated and if rotated it
+			&& ((tformed & WP_IMGTF_MASK_ROTATE) == WP_IMGTF_ROTATE0 ||    // rotated and if rotated it
 				(_ready_image.Width() <= std::min(canvas_w, canvas_h)      //             also fits screen
 				&& _ready_image.Height() <= std::min(canvas_w, canvas_h))) //             at any orientaion
 			&& (_wgi.Caps & WP_IMGCAP_ROTMIR) != 0) {                      // and backend supports transforms:
@@ -760,4 +761,56 @@ void ImageView::ToggleSelection()
 {
 	_all_files[_cur_file].second = !_all_files[_cur_file].second;
 	DenoteState();
+}
+
+static bool CmdFindAndReplace(std::string &cmd, const char *pattern, const std::string &value)
+{
+	size_t p = cmd.find(pattern);
+	if (p == std::string::npos) {
+		return false;
+	}
+	cmd.replace(p, strlen(pattern), value);
+	return true;
+}
+
+static bool CmdFindAndReplace(std::string &cmd, const char *pattern, int value)
+{
+	return CmdFindAndReplace(cmd, pattern, StrPrintf("%d", value));
+}
+
+void ImageView::RunProcessingCommand()
+{
+	WINPORT(DeleteConsoleImage)(NULL, WINPORT_IMAGE_ID);
+	auto cmd = g_settings.ExtraCommandsMenu();
+	if (!cmd.empty()) {
+		while (CmdFindAndReplace(cmd, "{W}", _orig_image.Width())
+			|| CmdFindAndReplace(cmd, "{H}", _orig_image.Height())) {
+		}
+
+		ToolExec cmd_exec(_cancel);
+		Environment::ExplodeCommandLine ecl(cmd);
+		for (const auto &a : ecl) {
+			cmd_exec.AddArguments(a);
+		}
+
+		std::vector<char> image_data(_orig_image.Size());
+		memcpy(image_data.data(), _orig_image.Ptr(0, 0), image_data.size());
+		cmd_exec.Stdin(image_data);
+		if (cmd_exec.Run(_render_file, _file_size_str, "", "Running custom command")) {
+			image_data.clear();
+			cmd_exec.FetchStdout(image_data);
+			if (_orig_image.Size() == image_data.size()) {
+				fprintf(stderr, "%s: image data looks OK\n", __FUNCTION__);
+				memcpy(_orig_image.Ptr(0, 0), image_data.data(), image_data.size());
+			} else {
+				fprintf(stderr, "%s: image data size changed - %lu -> %lu\n",
+					__FUNCTION__, (unsigned long)_orig_image.Size(), (unsigned long)image_data.size());
+				// TODO: msgbox
+			}
+		} else {
+			fprintf(stderr, "%s: command failed\n", __FUNCTION__);
+			// TODO: msgbox
+		}
+	}
+	ForceShow();
 }
