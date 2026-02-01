@@ -1,5 +1,5 @@
 
-# 2025-11-28 00:10
+# 2026-02-01 20:00
 name: act-Release -Lin-Mac
 
 on:
@@ -270,6 +270,28 @@ jobs:
           brew link libarchive --force
         fi
 
+# source archive - begin
+      - name: create source archive
+        if: always() && && matrix.job.name == 'min' && matrix.job.os = 'ubuntu-22.04'
+        run: |
+          echo "create source archive";
+
+      - name: Create source archive
+        if: always() && && matrix.job.name == 'min' && matrix.job.os = 'ubuntu-22.04'
+        continue-on-error: true
+        uses: deep-soft/zip-release@v3
+        with:
+          type: 'tar.xz'
+          filename: "${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-src";
+          directory: '.'
+          exclusions: '.git/objects'
+          recursive_exclusions: '.git/objects'
+          path: '.'
+          env_variable: ASSET_SRC
+        # archive name is ${{ env.ZIP_RELEASE_ARCHIVE }}
+
+# source archive - end
+
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
       # We'll use this as our working directory for all subsequent commands
@@ -370,6 +392,7 @@ jobs:
         tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
         files: |
           ${{ env.ZIP_RELEASE_ARCHIVE }}
+          ${{ env.ASSET_SRC }}
           ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.deb
           ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.tar.gz
           ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.dmg
