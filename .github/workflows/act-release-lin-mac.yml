@@ -272,23 +272,23 @@ jobs:
 
 # source archive - begin
     - name: create source archive
-      if: always() && matrix.job.name == 'min' && matrix.job.os = 'ubuntu-22.04'
+      if: always() && matrix.job.name == 'min' && matrix.job.os == 'ubuntu-22.04'
       run: |
         echo "create source archive";
 
     - name: Create source archive
-      if: always() && matrix.job.name == 'min' && matrix.job.os = 'ubuntu-22.04'
+      if: always() && matrix.job.name == 'min' && matrix.job.os == 'ubuntu-22.04'
       continue-on-error: true
       uses: deep-soft/zip-release@v3
+      # archive name is ${{ env.ZIP_RELEASE_ARCHIVE }}
       with:
         type: 'tar.xz'
-        filename: "${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-src";
+        filename: "${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-src"
         directory: '.'
         exclusions: '.git/objects'
         recursive_exclusions: '.git/objects'
         path: '.'
         env_variable: ASSET_SRC
-        # archive name is ${{ env.ZIP_RELEASE_ARCHIVE }}
 # source archive - end
 
     - name: Create Build Environment
@@ -427,4 +427,5 @@ jobs:
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C $BUILD_TYPE
+
 
