@@ -1,9 +1,9 @@
 #pragma once
 
 /*
-menubar.hpp
+printersupport.hpp
 
-Показ горизонтального меню при включенном "Always show menu bar"
+Basic code to worl with wxWidgets printers (easy way)
 */
 /*
 Copyright (c) 1996 Eugene Roshal
@@ -33,32 +33,44 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "scrobj.hpp"
+#include <WinCompat.h>
 
-class MenuBar : public ScreenObject
+#include <utils.h>
+#include "FARString.hpp"
+#include <farplug-wide.h>
+
+// Bridge to backends
+
+class PrinterSupport
 {
-protected:
-	virtual void DisplayObject();
-
 public:
-	MenuBar() {}
-	virtual ~MenuBar() {}
+	PrinterSupport() {}
+	~PrinterSupport() {}
+
+	virtual void PrintText(const std::wstring& jobName, const std::wstring& text);
+	virtual void PrintReducedHTML(const std::wstring& jobName, const std::wstring& text);
+	virtual void PrintTextFile(const std::wstring& fileName);
+	virtual void PrintHtmlFile(const std::wstring& fileName);
+
+	virtual void ShowPreviewForText(const std::wstring& jobName, const std::wstring& text);
+	virtual void ShowPreviewForReducedHTML(const std::wstring& jobName, const std::wstring& text);
+	virtual void ShowPreviewForTextFile(const std::wstring& fileName);
+	virtual void ShowPreviewForHtmlFile(const std::wstring& fileName);
+
+	virtual void ShowPrinterSetupDialog();
+
+	virtual bool IsPrintPreviewSupported();
+	virtual bool IsReducedHTMLSupported();
+	virtual bool IsPrinterSetupDialogSupported();
+
+private:
 };
 
-class ViewerMenuBar : public MenuBar
+class ColorspaceSupport 
 {
 public:
-	virtual void DisplayObject();
+	ColorspaceSupport(){}
+	~ColorspaceSupport(){}
 
-	ViewerMenuBar() {}
-	virtual ~ViewerMenuBar() {}
-};
-
-class EditorMenuBar : public MenuBar
-{
-public:
-	virtual void DisplayObject();
-
-	EditorMenuBar() {}
-	virtual ~EditorMenuBar() {}
+	FarTrueColor ConvertForPrintLAB(const FarTrueColor& in, const FarTrueColor& bg);
 };

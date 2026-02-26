@@ -7,6 +7,8 @@ src/farversion.cpp
 src/cache.cpp
 src/chattr.cpp
 src/clipboard.cpp
+src/printersupport.cpp
+src/fileedit2html.cpp
 src/cmdline.cpp
 src/copy.cpp
 src/ctrlobj.cpp
@@ -34,6 +36,7 @@ src/filepanels.cpp
 src/filestr.cpp
 src/filetype.cpp
 src/fileview.cpp
+src/fileview2options.cpp
 src/findfile.cpp
 src/FindPattern.cpp
 src/flink.cpp
