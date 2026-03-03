@@ -100,7 +100,7 @@ jobs:
         branch_name=${{ steps.get-branch-name.outputs.BRANCH_NAME }};
         echo "Branch name: $branch_name"
         if [ $branch_name != ${{ env.default_branch }} ]; then
-          PROG_NAME=${{ env.$PROG_NAME }}-$branch_name;
+          PROG_NAME=${{ env.PROG_NAME }}-$branch_name;
           echo "PROG_NAME=$PROG_NAME" >> $GITHUB_ENV;
         fi
 
@@ -453,6 +453,7 @@ jobs:
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C $BUILD_TYPE
+
 
 
 
