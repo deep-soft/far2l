@@ -1,9 +1,9 @@
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
-include(${CMAKE_SOURCE_DIR}/cmake/FuncCopyResources.cmake)
-
 cmake_minimum_required (VERSION 3.5.0)
 
 project (far2l)
+
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
+include(${CMAKE_SOURCE_DIR}/cmake/FuncCopyResources.cmake)
 
 set(APP_NAME "far2l")
 set(APP_IDENTIFIER "com.far2l")
@@ -52,7 +52,7 @@ if(NOT "${GIT_TAG}" STREQUAL "v_${VERSION}")
                 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
                 OUTPUT_VARIABLE GIT_DATE
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
-            string(SUBSTRING ${GIT_DATE} 0 10 GIT_DATE)
+            string(SUBSTRING "" 0 10 GIT_DATE)
             execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --short HEAD
                 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
                 OUTPUT_VARIABLE GIT_HASH
@@ -540,6 +540,26 @@ else()
         " COMPONENT system)
 endif()
 
+if (NOT DEFINED ADB OR ADB)
+    message(STATUS "ADB plugin enabled")
+    add_subdirectory (adb)
+else()
+    message(STATUS "${ColorRed}ADB plugin disabled due to ADB=${ADB}${ColorNormal}")
+    install(CODE "
+        execute_process(COMMAND rm -f ${CMAKE_INSTALL_PREFIX}/lib/far2l/Plugins/adb/plug/adb.far-plug-wide)
+        " COMPONENT system)
+endif()
+
+if (NOT DEFINED MTP OR MTP)
+    message(STATUS "MTP plugin enabled")
+    add_subdirectory (mtp)
+else()
+    message(STATUS "${ColorRed}MTP plugin disabled due to MTP=${MTP}${ColorNormal}")
+    install(CODE "
+        execute_process(COMMAND rm -f ${CMAKE_INSTALL_PREFIX}/lib/far2l/Plugins/mtp/plug/mtp.far-plug-wide)
+        " COMPONENT system)
+endif()
+
 if (NOT DEFINED HEXITOR OR HEXITOR)
     message(STATUS "HEXITOR plugin enabled")
     add_subdirectory (hexitor)
@@ -567,6 +587,16 @@ else()
     message(STATUS "${ColorRed}IMAGEVIEWER plugin disabled due to IMAGEVIEWER=${IMAGEVIEWER}${ColorNormal}")
     install(CODE "
         execute_process(COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_INSTALL_PREFIX}/lib/far2l/Plugins/ImageViewer/ImageViewer.far-plug-wide)
+        " COMPONENT system)
+endif()
+
+if (NOT DEFINED IMG OR IMG)
+    message(STATUS "IMG plugin enabled")
+    add_subdirectory (img)
+else()
+    message(STATUS "${ColorRed}IMG plugin disabled due to IMG=${IMG}${ColorNormal}")
+    install(CODE "
+        execute_process(COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_INSTALL_PREFIX}/lib/far2l/Plugins/img/plug/img.far-plug-wide)
         " COMPONENT system)
 endif()
 

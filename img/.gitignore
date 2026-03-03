@@ -1,0 +1,9 @@
+# Build artifacts
+CMakeFiles/
+Makefile
+cmake_install.cmake
+*.o
+*.o.d
+
+# OS files
+.DS_Store

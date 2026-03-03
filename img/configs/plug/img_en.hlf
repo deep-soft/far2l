@@ -1,0 +1,59 @@
+.Contents
+Help on Image plugin
+
+@Image plugin
+$ #Image plugin#
+Native image viewer with hardware-accelerated decoding.
+
+Supported: JPEG, PNG, GIF, WebP, HEIC/HEIF, TIFF, BMP
+
+@Navigation
+$ #Navigation#
+  Right     Next image
+  Left      Previous image
+  Up        First image
+  Down      Last image
+
+@Zoom
+$ #Zoom#
+  PgUp          Zoom in
+  PgDn          Zoom out
+  Shift+PgUp    Precise zoom in (1%)
+  Shift+PgDn    Precise zoom out (1%)
+  + / -         Zoom in/out
+  * / A         Fit to screen
+  / / Z         100%
+  = / Num5      Reset
+  Wheel         Zoom
+
+@Pan
+$ #Panning#
+  Alt+Arrows        Pan image
+  Alt+Shift+Arrows  Fine pan (1px)
+  Mouse drag        Pan
+
+@Rotation
+$ #Rotation#
+  Home          Counter-clockwise (90°)
+  End           Clockwise (90°)
+  Shift+Home    Fine counter-clockwise (1°)
+  Shift+End     Fine clockwise (1°)
+  Tab           Clockwise
+  Shift+Tab     Counter-clockwise
+  Right click   Rotate
+  F7 / H        Mirror horizontal
+  F8 / V        Mirror vertical
+
+@Selection
+$ #Selection#
+  Ins        Toggle
+  Space      Select
+  Backspace  Deselect
+
+@Other
+$ #Other#
+  Enter / O  Open in Finder
+  Esc / F10  Exit (apply selection)
+  F5 / F     Fullscreen
+  F9         Settings
+  F1         Help

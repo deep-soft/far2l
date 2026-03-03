@@ -8,7 +8,7 @@ include(BundleUtilities)
 set(BU_CHMOD_BUNDLE_ITEMS TRUE)
 set(APP_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/@APP_NAME@.app")
 file(GLOB_RECURSE PLUGINS "${APP_INSTALL_DIR}/**/*.far-plug*" "${APP_INSTALL_DIR}/**/*.so")
-fixup_bundle("${APP_INSTALL_DIR}" "${PLUGINS}" "" IGNORE_ITEM "python;python3;python3.8;Python;.Python")
+fixup_bundle("${APP_INSTALL_DIR}" "${PLUGINS}" "/opt/homebrew/lib;/usr/local/lib" IGNORE_ITEM "python;python3;python3.8;Python;.Python")
 
 # STEP 2:
 # Unfortunately cmake's fixup_bundle doesnt know about @loader_path and previous solution
@@ -23,7 +23,8 @@ endforeach()
 set(CODESIGN_CERT "$ENV{FAR2L_CODESIGN_CERT}")
 
 IF("${CODESIGN_CERT} " STREQUAL " ")
-	message(STATUS "Not signing as FAR2L_CODESIGN_CERT undefined")
+	message(STATUS "Ad-hoc signing ${APP_INSTALL_DIR}")
+	execute_process(COMMAND /usr/bin/codesign -s "-" --deep -v "${APP_INSTALL_DIR}")
 ELSE()
 	message(STATUS "Signing ${APP_INSTALL_DIR} as ${CODESIGN_CERT}")
 	execute_process(COMMAND /usr/bin/codesign -s "${CODESIGN_CERT}" --deep -v "${APP_INSTALL_DIR}")

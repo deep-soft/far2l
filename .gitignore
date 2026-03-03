@@ -27,4 +27,9 @@ packaging/osx/FixupBundle.cmake
 packaging/osx/Setup.scpt
 far2l_askpass
 far2l_sudoapp
-
+.cache/
+*.far-plug-wide 
+Colorer-library/
+far2l/far2ledit
+.claude/
+mtp/mtp_console
