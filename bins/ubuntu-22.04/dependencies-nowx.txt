@@ -8,6 +8,7 @@ libxi-dev
 
 libuchardet-dev
 libxml2-dev
+libusb-dev
 
 libarchive-dev
 libssh-dev
