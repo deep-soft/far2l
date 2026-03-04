@@ -1,3 +1,5 @@
 libwxgtk3.2-dev
 libuchardet-dev
 libxml2-dev
+libusb-dev
+libusb-1.0
