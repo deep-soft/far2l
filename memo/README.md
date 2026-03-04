@@ -37,25 +37,6 @@ Last active page is remembered in `state.ini` and restored on next open.
 - **Enable / disable** the plugin entirely (stored in `state.ini`)
 - When disabled, `Ctrl+S` / `Cmd+S` is silently ignored
 
-## Known Limitation — Ctrl+S / Cmd+S not available in F4 Editor
-
-> **Why**: The memo dialog uses a `DI_MEMOEDIT` item internally backed by a Far2l `Editor`
-> object. When that editor gains focus, Far2l broadcasts an `EE_GOTFOCUS` event to **all**
-> loaded plugins. The **colorer** plugin intercepts this event and calls
-> `ECTL_GETFILENAME` to determine the file's syntax. Because the dialog editor has no
-> backing file, `ECTL_GETFILENAME` returns **`nullptr`**. Colorer then passes this null
-> pointer directly to `UnicodeString` constructor inside `FarEditor::chooseFileType`,
-> causing an immediate `SIGABRT` / `KERN_INVALID_ADDRESS` crash.
->
-> **Workaround**: When `OpenPluginW` is called while a real editor is active
-> (`EditorControl(ECTL_GETINFO)` returns `EditorID != 0`), the plugin silently skips
-> opening the dialog. This prevents the crash until colorer is fixed to guard against a
-> null filename.
->
-> **Affected versions**: colorer as of far2l 2.7.0-beta (Feb 2026). The crash occurs in
-> `FarEditorSet::addCurrentEditor` → `FarEditorSet::getCurrentFileName` →
-> `FarEditor::chooseFileType(UnicodeString const*)`.
-
 ## Hotkey Setup
 
 The plugin does not register hotkeys itself.  
