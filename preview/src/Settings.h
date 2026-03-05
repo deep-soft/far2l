@@ -26,6 +26,8 @@ private:
 	bool _autofit_on_rotate = false;
 	bool _fast_transforms = true;
 	bool _compact_frame = false;
+	bool _enabled = true;
+	bool _native_implementation = true;
 	std::string _image_masks;
 
 public:
@@ -33,6 +35,8 @@ public:
 	const wchar_t *Msg(int msgId);
 	void ConfigurationDialog();
 
+	bool Enabled() const { return _enabled; }
+	bool NativeImplementation() const { return _native_implementation; }
 	bool UseOrientation() const { return _use_orientation; }
 	bool OpenByEnter() const { return _open_by_enter; }
 	bool OpenByCtrlPgDn() const { return _open_by_cpgdn; }

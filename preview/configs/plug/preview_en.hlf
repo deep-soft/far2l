@@ -1,8 +1,8 @@
 .Contents
-Help on Image plugin
+Help on Preview plugin
 
-@Image plugin
-$ #Image plugin#
+@Preview
+$ #Preview#
 Native image viewer with hardware-accelerated decoding.
 
 Supported: JPEG, PNG, GIF, WebP, HEIC/HEIF, TIFF, BMP

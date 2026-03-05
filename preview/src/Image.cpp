@@ -10,9 +10,9 @@
 #include <math.h>
 
 #include "Image.h"
-#include "ImgLog.h"
+#include "PreviewLog.h"
 
-#ifdef IMG_NATIVE
+#ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
 #endif
 
@@ -328,7 +328,7 @@ void Image::RotateArbitrary(Image &dst, double angle_degrees, bool high_quality)
 		return;
 	}
 
-#ifdef IMG_NATIVE
+#ifdef __APPLE__
 	// Use vImage for arbitrary rotation on macOS
 	const double angle_rad = -angle_degrees * M_PI / 180.0;  // Negative for clockwise convention
 
@@ -418,10 +418,80 @@ void Image::RotateArbitrary(Image &dst, double angle_degrees, bool high_quality)
 		}
 	}
 #else
-	// Fallback for non-macOS: just copy
-	(void)angle_degrees;
-	(void)high_quality;
-	dst = *this;
+	// High-performance software fallback for non-macOS platforms
+	const double angle_rad = -angle_degrees * M_PI / 180.0;
+	const double cos_a = cos(angle_rad);
+	const double sin_a = sin(angle_rad);
+
+	const int new_width = int(fabs(_width * cos_a) + fabs(_height * sin_a) + 0.5);
+	const int new_height = int(fabs(_width * sin_a) + fabs(_height * cos_a) + 0.5);
+
+	dst.Resize(new_width, new_height, _bytes_per_pixel);
+	memset(dst.Data(), 0, dst.Size()); // Black background
+
+	const double cx = _width / 2.0;
+	const double cy = _height / 2.0;
+	const double ncx = new_width / 2.0;
+	const double ncy = new_height / 2.0;
+
+	// Use 16.16 fixed-point arithmetic
+	const int64_t fixed_one = 1LL << 16;
+	const int64_t f_cos_a = (int64_t)(cos_a * fixed_one);
+	const int64_t f_sin_a = (int64_t)(sin_a * fixed_one);
+	const int64_t f_cx = (int64_t)(cx * fixed_one);
+	const int64_t f_cy = (int64_t)(cy * fixed_one);
+	const int64_t f_ncx = (int64_t)(ncx * fixed_one);
+	const int64_t f_ncy = (int64_t)(ncy * fixed_one);
+
+	auto rotate_y_range = [&](int y_begin, int y_end) {
+		for (int y = y_begin; y < y_end; ++y) {
+			int64_t fy_rel = (int64_t)y * fixed_one - f_ncy;
+			
+			// Pre-calculate terms that only depend on y
+			int64_t base_sx = - (fy_rel * f_sin_a >> 16) + f_cx;
+			int64_t base_sy = (fy_rel * f_cos_a >> 16) + f_cy;
+
+			uint8_t *dst_row = dst.Ptr(0, y);
+
+			for (int x = 0; x < new_width; ++x) {
+				int64_t fx_rel = (int64_t)x * fixed_one - f_ncx;
+
+				// sx = fx_rel * cos_a - fy_rel * sin_a + cx
+				// sy = fx_rel * sin_a + fy_rel * cos_a + cy
+				int64_t sx = (fx_rel * f_cos_a >> 16) + base_sx;
+				int64_t sy = (fx_rel * f_sin_a >> 16) + base_sy;
+
+				int src_x = (int)((sx + (fixed_one >> 1)) >> 16);
+				int src_y = (int)((sy + (fixed_one >> 1)) >> 16);
+
+				if (src_x >= 0 && src_x < _width && src_y >= 0 && src_y < _height) {
+					const uint8_t *src_pix = Ptr(src_x, src_y);
+					for (int c = 0; c < _bytes_per_pixel; ++c) {
+						dst_row[x * _bytes_per_pixel + c] = src_pix[c];
+					}
+				}
+			}
+		}
+	};
+
+	const int hw_cpu_count = int(std::thread::hardware_concurrency());
+	const int use_cpu_count = (hw_cpu_count > 0) ? std::min(16, hw_cpu_count) : 1;
+
+	if (use_cpu_count > 1 && new_height > 16) {
+		std::vector<std::thread> threads;
+		int y_start = 0;
+		int chunk = new_height / use_cpu_count;
+		for (int i = 0; i < use_cpu_count - 1; ++i) {
+			threads.emplace_back(rotate_y_range, y_start, y_start + chunk);
+			y_start += chunk;
+		}
+		rotate_y_range(y_start, new_height);
+		for (auto &t : threads) t.join();
+	} else {
+		rotate_y_range(0, new_height);
+	}
+
+	(void)high_quality; 
 #endif
 }
 

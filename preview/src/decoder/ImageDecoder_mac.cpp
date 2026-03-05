@@ -1,6 +1,7 @@
-#ifdef IMG_NATIVE
+#ifdef __APPLE__
 
 #include "ImageDecoder.h"
+#include "../PreviewLog.h"
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -75,7 +76,7 @@ CGImageRef MacOSImageDecoder::LoadScaledImage(const char* path, int maxPixelSize
 			kCFBooleanTrue,
 			maxSizeNum,
 			kCFBooleanTrue,  // Apply EXIF orientation during decode
-			kCFBooleanTrue
+			kCFBooleanFalse  // Don't cache thumbnails immediately to save memory/time
 		};
 
 		CFDictionaryRef options = CFDictionaryCreate(
@@ -88,6 +89,7 @@ CGImageRef MacOSImageDecoder::LoadScaledImage(const char* path, int maxPixelSize
 		img = CGImageSourceCreateThumbnailAtIndex(src, 0, options);
 		CFRelease(options);
 	}
+
 
 	if (!img) {
 		// Fallback: full decode (no scaling)
@@ -103,46 +105,31 @@ bool MacOSImageDecoder::ExtractRGB(CGImageRef image, Image& out)
 	size_t width = CGImageGetWidth(image);
 	size_t height = CGImageGetHeight(image);
 
-	// Allocate output buffer (3 bytes per pixel for RGB)
-	out.Resize(width, height, 3);
+	vImage_Buffer srcBuf{};
+	vImage_CGImageFormat format = {
+		.bitsPerComponent = 8,
+		.bitsPerPixel = 32,
+		.colorSpace = nullptr, // Default to sRGB
+		.bitmapInfo = kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Big,
+		.version = 0,
+		.decode = nullptr,
+		.renderingIntent = kCGRenderingIntentDefault
+	};
 
-	// Use sRGB color space for accurate color reproduction with most images
-	CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
-	if (!colorSpace) {
-		colorSpace = CGColorSpaceCreateDeviceRGB();
-	}
-
-	// Create temporary ARGB buffer (CoreGraphics requires 32-bit aligned)
-	// Use big-endian byte order so memory layout is ARGB (what vImage expects)
-	size_t argb_stride = width * 4;
-	std::vector<uint8_t> argb(argb_stride * height);
-
-	CGContextRef ctx = CGBitmapContextCreate(
-		argb.data(),
-		width,
-		height,
-		8,
-		argb_stride,
-		colorSpace,
-		kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Big  // Big-endian = ARGB in memory
-	);
-	CGColorSpaceRelease(colorSpace);
-
-	if (!ctx) {
+	vImage_Error err = vImageBuffer_InitWithCGImage(&srcBuf, &format, nullptr, image, kvImageNoFlags);
+	if (err != kvImageNoError) {
+		DBG("vImageBuffer_InitWithCGImage failed: %ld", (long)err);
 		return false;
 	}
 
-	// Draw image - CoreGraphics handles color matching
-	CGContextDrawImage(ctx, CGRectMake(0, 0, width, height), image);
-	CGContextRelease(ctx);
+	// RAII wrapper to ensure memory is freed even if we add early returns later
+	struct VImageBufferAutoFree {
+		vImage_Buffer* buf;
+		~VImageBufferAutoFree() { if (buf && buf->data) free(buf->data); }
+	} autoFree{&srcBuf};
 
-	// Use vImage for hardware-accelerated ARGB→RGB conversion
-	vImage_Buffer srcBuf = {
-		.data = argb.data(),
-		.height = (vImagePixelCount)height,
-		.width = (vImagePixelCount)width,
-		.rowBytes = argb_stride
-	};
+	// Allocate output buffer (3 bytes per pixel for RGB)
+	out.Resize(width, height, 3);
 
 	vImage_Buffer dstBuf = {
 		.data = (void*)out.Data(),
@@ -151,15 +138,19 @@ bool MacOSImageDecoder::ExtractRGB(CGImageRef image, Image& out)
 		.rowBytes = width * 3
 	};
 
-	vImage_Error err = vImageConvert_ARGB8888toRGB888(&srcBuf, &dstBuf, kvImageNoFlags);
+	// Convert ARGB to RGB
+	err = vImageConvert_ARGB8888toRGB888(&srcBuf, &dstBuf, kvImageNoFlags);
+
 	return err == kvImageNoError;
 }
 
 bool MacOSImageDecoder::Decode(const std::string& path, Image& out, int& orientation, int maxPixelSize)
 {
+	DBG("Decoding via Native ImageIO: %s", path.c_str());
 	// Load image with optional scaling
 	CGImageRef image = LoadScaledImage(path.c_str(), maxPixelSize);
 	if (!image) {
+		DBG("Native ImageIO failed to load image: %s", path.c_str());
 		return false;
 	}
 
@@ -170,6 +161,7 @@ bool MacOSImageDecoder::Decode(const std::string& path, Image& out, int& orienta
 
 	// Extract RGB data
 	bool success = ExtractRGB(image, out);
+	DBG("Native ImageIO extraction success=%d, size=%zux%zu", success, CGImageGetWidth(image), CGImageGetHeight(image));
 
 	CGImageRelease(image);
 	return success;
@@ -183,4 +175,4 @@ void CreateMacDecoders(std::vector<std::unique_ptr<ImageDecoder>>& decoders)
 	decoders.push_back(std::make_unique<MacOSImageDecoder>());
 }
 
-#endif // IMG_NATIVE
+#endif // __APPLE__

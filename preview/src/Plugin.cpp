@@ -1,7 +1,7 @@
 #include "Common.h"
 #include "ImageView.h"
 #include "Settings.h"
-#include "ImgLog.h"
+#include "PreviewLog.h"
 
 PluginStartupInfo g_far;
 FarStandardFunctions g_fsf;
@@ -53,7 +53,7 @@ SHAREDSYMBOL void WINAPI GetPluginInfoW(struct PluginInfo *Info)
 	Info->PluginMenuStrings = menu_strings;
 	Info->PluginMenuStringsNumber = 1;
 
-	Info->CommandPrefix = L"img:";
+	Info->CommandPrefix = L"preview:";
 }
 
 static std::pair<std::string, bool> GetPanelItem(int cmd, int index)
@@ -217,6 +217,9 @@ static void OpenAtCurrentPanelItem()
 
 SHAREDSYMBOL HANDLE WINAPI OpenPluginW(int OpenFrom, INT_PTR Item)
 {
+	if (!g_settings.Enabled()) {
+		return INVALID_HANDLE_VALUE;
+	}
 	if (OpenFrom == OPEN_PLUGINSMENU) {
 		OpenAtCurrentPanelItem();
 
@@ -266,6 +269,9 @@ static std::string g_last_intercepted_file;  // Prevent re-intercepting same fil
 
 SHAREDSYMBOL int WINAPI ProcessViewerEventW(int Event,void *Param)
 {
+	if (!g_settings.Enabled()) {
+		return FALSE;
+	}
 	DBG("ProcessViewerEventW Event=%d", Event);
 	if (Event == VE_READ || Event == VE_CLOSE) {
 		// Get viewer info to check file name
@@ -353,6 +359,9 @@ SHAREDSYMBOL int WINAPI ConfigureW(int ItemNumber)
 
 SHAREDSYMBOL HANDLE WINAPI _export OpenFilePluginW(const wchar_t *Name, const unsigned char *Data, int DataSize, int OpMode)
 {
+	if (!g_settings.Enabled()) {
+		return INVALID_HANDLE_VALUE;
+	}
 	DBG("OpenFilePluginW Name=%ls OpMode=0x%x DataSize=%d",
 		Name ? Name : L"(null)", OpMode, DataSize);
 

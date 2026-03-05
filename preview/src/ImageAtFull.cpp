@@ -1,7 +1,8 @@
 #include "Common.h"
 #include "ImageView.h"
 #include "Settings.h"
-#include "ImgLog.h"
+#include "PreviewLog.h"
+#include <unistd.h>
 
 class ImageViewAtFull : public ImageView
 {
@@ -221,22 +222,19 @@ static LONG_PTR WINAPI ImageDlgProc(HANDLE hDlg, int Msg, int Param1, LONG_PTR P
 						iv->Deselect();
 					break;
 				case KEY_ENTER: case KEY_NUMENTER: case 'o': case 'O':
-					// Open in Finder/xdg-open - use single quotes with proper escaping
+					// Open in default OS viewer securely
 					{
 						std::string filename = iv->CurFile();
-						std::string escaped;
-						escaped.reserve(filename.size() + 2);
-						escaped += '\'';
-						for (char c : filename) {
-							if (c == '\'') {
-								escaped += "'\\''"; // end quote, escaped quote, start quote
-							} else {
-								escaped += c;
-							}
+						pid_t pid = fork();
+						if (pid == 0) {
+#ifdef __APPLE__
+							const char *cmd[] = {"open", filename.c_str(), nullptr};
+#else
+							const char *cmd[] = {"xdg-open", filename.c_str(), nullptr};
+#endif
+							execvp(cmd[0], (char *const *)cmd);
+							exit(1); // Exit child process if exec fails
 						}
-						escaped += '\'';
-						std::string cmd = "open " + escaped;
-						system(cmd.c_str());
 					}
 					break;
 				case KEY_ESC: case KEY_F10:

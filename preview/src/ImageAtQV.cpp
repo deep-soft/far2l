@@ -1,6 +1,6 @@
 #include "Common.h"
 #include "ImageView.h"
-#include "ImgLog.h"
+#include "PreviewLog.h"
 #include <optional>
 #include <mutex>
 #include <condition_variable>

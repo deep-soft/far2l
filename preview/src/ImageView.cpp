@@ -1,7 +1,7 @@
 #include "Common.h"
 #include "ImageView.h"
 #include "Settings.h"
-#include "ImgLog.h"
+#include "PreviewLog.h"
 #include "decoder/ImageDecoder.h"
 
 #define SETIMG_INITALLY_ASSUMED_SPEED    8192

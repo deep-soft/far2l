@@ -45,10 +45,20 @@ public:
 	}
 	inline unsigned char *Ptr(int x, int y, unsigned char channel = 0)
 	{
-		return _data.data() + Offset(x, y, channel);
+		size_t off = Offset(x, y, channel);
+		if (off >= _data.size()) {
+			static unsigned char dummy = 0;
+			return &dummy;
+		}
+		return _data.data() + off;
 	}
 	inline const unsigned char *Ptr(int x, int y, unsigned char channel = 0) const
 	{
-		return _data.data() + Offset(x, y, channel);
+		size_t off = Offset(x, y, channel);
+		if (off >= _data.size()) {
+			static const unsigned char dummy = 0;
+			return &dummy;
+		}
+		return _data.data() + off;
 	}
 };

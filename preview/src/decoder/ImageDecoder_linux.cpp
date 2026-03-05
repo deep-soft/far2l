@@ -1,9 +1,9 @@
-#if !defined(IMG_NATIVE)
+#if !defined(PREVIEW_NATIVE)
 
 #include "ImageDecoder.h"
 
 #if defined(__clang__) || defined(__GNUC__)
-#warning "IMG plugin: decoder backend is not implemented; building with placeholder decoder factory."
+#warning "Preview plugin: decoder backend is not implemented; building with placeholder decoder factory."
 #endif
 
 void CreateCrossPlatformDecoders(std::vector<std::unique_ptr<ImageDecoder>>& decoders)
@@ -11,4 +11,4 @@ void CreateCrossPlatformDecoders(std::vector<std::unique_ptr<ImageDecoder>>& dec
 	(void)decoders;
 }
 
-#endif // !IMG_NATIVE
+#endif // !PREVIEW_NATIVE

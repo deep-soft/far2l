@@ -1,6 +1,5 @@
-#if !defined(IMG_NATIVE)
-
 #include "ImageDecoder.h"
+#include "../PreviewLog.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -40,6 +39,7 @@ public:
 
 	bool Decode(const std::string& path, Image& out, int& orientation, int maxPixelSize) override
 	{
+		DBG("Decoding via STB (Crossplatform): %s", path.c_str());
 		int width, height, channels;
 		orientation = ExifHelpers::ReadExifOrientation(path);
 
@@ -85,5 +85,3 @@ void CreateCrossPlatformDecoders(std::vector<std::unique_ptr<ImageDecoder>>& dec
 {
 	decoders.push_back(std::make_unique<StbImageDecoder>());
 }
-
-#endif // !IMG_NATIVE
