@@ -1,4 +1,7 @@
 {
+	"editor.wordWrap": "off",
+    "editor.rulers": [110],
+    "editor.formatOnSave": false,
     "cmake.buildDirectory": "${workspaceFolder}/_build",
     "cmake.configureOnOpen": true,
     "cmake.cmakePath": "cmake",
