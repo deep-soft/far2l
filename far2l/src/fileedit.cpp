@@ -74,6 +74,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "filelist.hpp"
 
 #include "fileedit2options.hpp"
+#include "printersupport.hpp"
 
 enum enumOpenEditor
 {
@@ -1525,6 +1526,9 @@ int FileEditor::LoadFile(const wchar_t *Name, int &UserBreak)
 	EditFile.GetSize(FileSize);
 	DWORD StartTime = WINPORT(GetTickCount)();
 
+	// Enable bulk loading mode for faster file loading
+	m_editor->BeginBulkLoad();
+
 	while ((GetCode = GetStr.GetString(&Str, m_codepage, StrLength))) {
 		if (GetCode == -1) {
 			EditFile.Close();
@@ -1555,6 +1559,7 @@ int FileEditor::LoadFile(const wchar_t *Name, int &UserBreak)
 			if (CheckForEscSilent()) {
 				if (ConfirmAbortOp()) {
 					UserBreak = 1;
+					m_editor->EndBulkLoad();
 					EditFile.Close();
 					return FALSE;
 				}
@@ -1578,6 +1583,9 @@ int FileEditor::LoadFile(const wchar_t *Name, int &UserBreak)
 			return FALSE;
 		}
 	}
+
+	// End bulk loading mode
+	m_editor->EndBulkLoad();
 
 	BadConversion = !GetStr.IsConversionValid();
 	if (BadConversion) {
@@ -2903,15 +2911,13 @@ void FileEditor::ProcessMenuCommand(int hMenu, int vMenu, FarKey accelKey)
 		}
 		return;
 	}
-	// todo: handle commands without accelerated keys
-	/* Once printer support will be merged, we can uncomment this
 	else if (hMenu == MENU_FILE && vMenu == MENU_FILE_PRINTER) {
 		PrinterSupport ps;
 		if (ps.IsPrinterSetupDialogSupported()) {
 			ps.ShowPrinterSetupDialog();
 		}
 		return;
-	}*/
+	}
 }
 
 int FileEditor::MenuBarPosition() {
