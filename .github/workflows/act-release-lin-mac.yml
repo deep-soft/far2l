@@ -80,7 +80,7 @@ jobs:
     #if: ${{ matrix.job.name }} != 'wPY' || ${{ inputs.wPY }}
     steps:
     - name: Checkout source code
-      uses: deep-soft/checkout@v4
+      uses: deep-soft/checkout@v6
       with:
         submodules: recursive
 
