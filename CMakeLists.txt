@@ -644,6 +644,7 @@ install(DIRECTORY "${INSTALL_DIR}/" DESTINATION "lib/far2l" USE_SOURCE_PERMISSIO
     PATTERN "plug/*.far-plug-*"
     PATTERN "plug/*.broker"
     PATTERN "python/plugins" EXCLUDE
+    PATTERN "themes" EXCLUDE
 )
 
 install(DIRECTORY "${INSTALL_DIR}/" DESTINATION "share/far2l" USE_SOURCE_PERMISSIONS COMPONENT base FILES_MATCHING
