@@ -304,25 +304,11 @@ static bool convertToReducedHTML(TextBuffer& tb, Edit* line, int start, int len,
 	return true;
 }
 
-static constexpr const char HTML_PRE_HEADER[] =
-	"<html><head>"
-	"<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">"
-	"<style>@media print{pre{white-space:pre-wrap;overflow-wrap:break-word;}}</style>"
-	"</head><body><pre>\n";
-
-static constexpr const char HTML_PRE_FOOTER[] =
-    "</pre></body></html>";
-
 BOOL FileEditor::SendToPrinter()
 {
 	PrinterSupport printer;
 	TextBuffer tb;
 	int tab = m_editor->EdOpt.TabSize;
-
-	fprintf(stderr, "Printer caps: HTML=%c, preview=%c, setup dialog=%c\n",
-		printer.IsReducedHTMLSupported() ? 'Y' : 'N',
-		printer.IsPrintPreviewSupported() ? 'Y' : 'N',
-		printer.IsPrinterSetupDialogSupported() ?  'Y' : 'N');
 
 	const wchar_t *CurStr = 0, *EndSeq = 0;
 	int StartSel = -1, EndSel = -1;
@@ -375,6 +361,7 @@ BOOL FileEditor::SendToPrinter()
     	}
 	}
 
+	// something is selected
 	if (!tb.is_empty()) {
 		if(printer.IsReducedHTMLSupported())
 			tb.append(HTML_PRE_FOOTER);
@@ -394,53 +381,29 @@ BOOL FileEditor::SendToPrinter()
 		return TRUE;
 	}
 
-	// get all data in UTF-8 form and save to the temporary UTF-8 file to print, as it might be huge
-	char tmpl[] = "/tmp/far2l-editor-printXXXXXX";
-	int fd = mkstemp(tmpl);
-	FILE* fp = fdopen(fd, "a+");
-	std::string _tmpstr;
+	// we need to print whole file
+	FILE* fp = printer.BeginPrint();
+	if (fp) {
+		std::string _tmpstr;
 
-	if (printer.IsReducedHTMLSupported()) {
-		fprintf(fp, HTML_PRE_HEADER);
-	}
+		for (Edit *CurPtr = m_editor->TopList; CurPtr; CurPtr = CurPtr->m_next) {
+			const wchar_t *SaveStr, *EndSeq;
 
-	for (Edit *CurPtr = m_editor->TopList; CurPtr; CurPtr = CurPtr->m_next) {
-		const wchar_t *SaveStr, *EndSeq;
+			CurPtr->GetBinaryString(&SaveStr, &EndSeq, Length);
 
-		CurPtr->GetBinaryString(&SaveStr, &EndSeq, Length);
-
-		TextBuffer tb;
-		if (printer.IsReducedHTMLSupported() && convertToReducedHTML(tb, CurPtr, 0, Length, tab)) 
-			fprintf(fp, "%s", tb.c_str());
-		else {
-    		Wide2MB(SaveStr, Length, _tmpstr);
-    		fwrite(_tmpstr.data(), 1, _tmpstr.size(), fp);
-            fputc('\n', fp);
+			TextBuffer tb;
+			if (printer.IsReducedHTMLSupported() && convertToReducedHTML(tb, CurPtr, 0, Length, tab))  {
+				fprintf(fp, "%s", tb.c_str());
+			} else {
+				Wide2MB(SaveStr, Length, _tmpstr);
+				fwrite(_tmpstr.data(), 1, _tmpstr.size(), fp);
+				fputc('\n', fp);
+			}
 		}
+
+		printer.EndPrint(fp);
 	}
 
-	if (printer.IsReducedHTMLSupported())
-		fprintf(fp, HTML_PRE_FOOTER);
-	fclose(fp);
-    
-    Length = strlen(tmpl);
-    std::wstring _tmpwstr;
-    MB2Wide(tmpl, Length, _tmpwstr);
-
-	if (printer.IsPrintPreviewSupported()) {
-		if (printer.IsReducedHTMLSupported()) 
-			printer.ShowPreviewForHtmlFile(_tmpwstr);
-		else 
-			printer.ShowPreviewForTextFile(_tmpwstr);
-	}
-	else {
-		if (printer.IsReducedHTMLSupported()) 
-			printer.PrintHtmlFile(_tmpwstr);
-		else
-			printer.PrintTextFile(_tmpwstr);
-	}
-
-	// unlink(tmpl);
 	return TRUE;
 }
 
