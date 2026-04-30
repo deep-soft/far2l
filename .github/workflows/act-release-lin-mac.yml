@@ -298,7 +298,7 @@ jobs:
         if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
           if [[ "${{ matrix.job.options }}" =~ "-DUSEWX=yes" ]]; then
             echo "libsdl2-dev" >> dependencies-smb-nfs-neon.txt;
-            echo "harfbuzz" >> dependencies-smb-nfs-neon.txt;
+            echo "libharfbuzz-dev" >> dependencies-smb-nfs-neon.txt;
             sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt);
             use_SDL=" -DUSESDL=yes";
             echo "use_SDL=$use_SDL" >> $GITHUB_ENV;
