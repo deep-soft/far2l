@@ -52,6 +52,7 @@ env:
   PROG_NAME: far2l
   PROG_VERSION: "v1.0.0"
   default_branch: "master"
+  use_SDL: ""
 
 jobs:
   build:
@@ -290,6 +291,20 @@ jobs:
           brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive;
         fi
 
+    - name: add dependencies SDL2
+      shell: bash
+      run: |
+        if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
+          if [[ ${{ matrix.job.options }} =~ "-DUSEWX=yes" ]]; then
+            echo "libsdl2-dev" >> dependencies-smb-nfs-neon.txt;
+          fi
+          sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt);
+          if [[ ${{ matrix.job.options }} =~ "-DUSEWX=yes" ]]; then
+            use_SDL=" -DUSESDL=yes";
+            echo "use_SDL=$use_SDL" >> $GITHUB_ENV;
+          fi
+        fi
+
     - name: Relink 'keg-only' packages
       run: |
         if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
@@ -336,7 +351,7 @@ jobs:
       run: |
         if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
           # cmake $GITHUB_WORKSPACE -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
-          cmake -S . -B _build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
+          cmake -S . -B _build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }} ${{ env.use_SDL }};
         fi
         if [[ ${{ matrix.job.os }} =~ "macos-15" ]]; then
           cmake -S . -B _build -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
@@ -453,8 +468,3 @@ jobs:
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C $BUILD_TYPE
-
-
-
-
-
