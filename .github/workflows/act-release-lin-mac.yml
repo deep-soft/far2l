@@ -321,7 +321,7 @@ jobs:
     - name: Create source archive
       if: always() && matrix.job.name == 'min' && matrix.job.os == 'ubuntu-22.04'
       continue-on-error: true
-      uses: deep-soft/zip-release@v3
+      uses: deep-soft/zip-release@v5
       # archive name is ${{ env.ZIP_RELEASE_ARCHIVE }}
       with:
         type: 'tar.xz'
@@ -414,7 +414,7 @@ jobs:
 
     - name: Archive Release
       continue-on-error: true
-      uses: deep-soft/zip-release@v2
+      uses: deep-soft/zip-release@v5
       with:
         type: 'zip'
         filename: '${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.zip'
@@ -427,7 +427,7 @@ jobs:
 
     - name: Publish Release
       continue-on-error: true
-      uses: deep-soft/action-gh-release@v2.1
+      uses: deep-soft/action-gh-release@v3
       with:
         draft: true
         tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
@@ -440,7 +440,7 @@ jobs:
 
     - name: Archive Release - All
       if: ${{ inputs.make_archive_all }}
-      uses: deep-soft/zip-release@v2
+      uses: deep-soft/zip-release@v5
       with:
         type: 'zip'
         filename: '${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}-ALL.zip'
@@ -455,7 +455,7 @@ jobs:
     - name: Publish Release - All
       if: ${{ inputs.make_archive_all }}
       continue-on-error: true
-      uses: deep-soft/action-gh-release@v2.1
+      uses: deep-soft/action-gh-release@v3
       with:
         draft: true
         tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-ALL
