@@ -5,8 +5,6 @@ pkg-config
 libwxgtk3.2-dev
 libx11-dev
 libxi-dev
-
-libsdl2
 libsdl2-dev
 
 libuchardet-dev
