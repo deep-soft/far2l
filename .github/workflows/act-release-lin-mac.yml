@@ -1,5 +1,5 @@
-
-# 2026-02-01 20:00
+# 2026-05-01 01:10
+# act-release-lin-mac.yml
 name: act-Release -Lin-Mac
 
 on:
@@ -297,8 +297,8 @@ jobs:
       run: |
         if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
           if [[ "${{ matrix.job.options }}" =~ "-DUSEWX=yes" ]]; then
-            if [[ -f dependencies-SDL.txt ]]; then          
-              cat dependencies-SDL.txt >> dependencies${{ matrix.job.dependencies }}.txt;
+            if [[ -f bins/dependencies-SDL.txt ]]; then          
+              cat bins/dependencies-SDL.txt >> dependencies${{ matrix.job.dependencies }}.txt;
               sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt);
               use_SDL=" -DUSESDL=yes";
               echo "use_SDL=$use_SDL" >> $GITHUB_ENV;
