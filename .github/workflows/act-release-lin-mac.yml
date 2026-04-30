@@ -411,7 +411,7 @@ jobs:
 
     - name: Publish Release
       continue-on-error: true
-      uses: deep-soft/action-gh-release@v2.1
+      uses: deep-soft/action-gh-release@v3
       with:
         draft: true
         tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
@@ -439,7 +439,7 @@ jobs:
     - name: Publish Release - All
       if: ${{ inputs.make_archive_all }}
       continue-on-error: true
-      uses: deep-soft/action-gh-release@v2.1
+      uses: deep-soft/action-gh-release@v3
       with:
         draft: true
         tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-ALL
