@@ -1,0 +1,6 @@
+
+libsdl2-dev
+libharfbuzz-dev
+fontconfig
+libfontconfig-dev
+libffi-dev
