@@ -5,6 +5,7 @@ pkg-config
 libwxgtk3.0-gtk3-dev
 libx11-dev
 libxi-dev
+libsdl2-dev
 
 libuchardet-dev
 libxml2-dev

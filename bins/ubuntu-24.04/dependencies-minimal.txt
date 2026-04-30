@@ -1,7 +1,6 @@
-libwxgtk3.0-gtk3-dev
+libwxgtk3.2-dev
 libuchardet-dev
 libxml2-dev
 libusb-dev
 libusb-1.0
-libsdl2
 libsdl2-dev
