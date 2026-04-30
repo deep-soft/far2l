@@ -292,14 +292,13 @@ jobs:
         fi
 
     - name: add dependencies SDL2
+      continue-on-error: true
       shell: bash
       run: |
         if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
-          if [[ ${{ matrix.job.options }} =~ "-DUSEWX=yes" ]]; then
+          if [[ "${{ matrix.job.options }}" =~ "-DUSEWX=yes" ]]; then
             echo "libsdl2-dev" >> dependencies-smb-nfs-neon.txt;
-          fi
-          sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt);
-          if [[ ${{ matrix.job.options }} =~ "-DUSEWX=yes" ]]; then
+            sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt);
             use_SDL=" -DUSESDL=yes";
             echo "use_SDL=$use_SDL" >> $GITHUB_ENV;
           fi
