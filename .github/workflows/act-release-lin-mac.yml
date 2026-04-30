@@ -1,0 +1,460 @@
+# 2026-04-30 15:15
+# act-release-lin-mac.yml
+name: act-Release -Lin-Mac
+
+on:
+#  push
+  workflow_dispatch:
+    inputs:
+      PLUGINS_EXTRA: 
+        description: 'PLUGINS_EXTRA'
+        type: boolean
+        default: true
+      make_archive_all:
+        description: 'Archive ALL'
+        type: boolean
+        default: false
+      run_tests:
+      # Execute tests defined by the CMake configuration.
+        description: 'run tests'
+        type: boolean
+        default: false
+      MULTIARC_PDF:
+        description: MULTIARC_PDF
+        type: boolean
+        default: false
+        required: true
+      MULTIARC_PDF_PARAMS:
+        description: MULTIARC_PDF_PARAMS
+        default: "multiarc/src/ArcPlg.cpp"
+        required: true
+      SED_STUFF:
+        description: SED_STUFF
+        type: boolean
+        default: true
+        required: true
+      SED_STUFF_PARAMS:
+        description: SED_STUFF_PARAMS
+        default: "filename_to_cat"
+        required: true
+      DEBUG_MODE_1:
+        description: DEBUG_MODE_1
+        default: "N"
+        required: true
+      DEBUG_MODE_2:
+        description: DEBUG_MODE_2
+        default: "N"
+        required: true
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  PROG_NAME: far2l
+  PROG_VERSION: "v1.0.0"
+  default_branch: "master"
+
+jobs:
+  build:
+    name: ${{ matrix.job.name }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { name: "min"     , os: ubuntu-22.04  , dependencies: "-minimal"     , options: "-DPYTHON=no  -DUSEWX=no "              }
+          - { name: "nWXnPY"  , os: ubuntu-22.04  , dependencies: "-smb-nfs-neon", options: "-DPYTHON=no  -DUSEWX=no "              }
+          - { name: "wWXnPY"  , os: ubuntu-22.04  , dependencies: "-smb-nfs-neon", options: "-DPYTHON=no  -DUSEWX=yes -DUSESDL=yes" }
+          - { name: "nWXwPY"  , os: ubuntu-22.04  , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes -DUSEWX=no"               }
+          - { name: "wWXwPY"  , os: ubuntu-22.04  , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes -DUSEWX=yes -DUSESDL=yes" }
+          - { name: "min"     , os: ubuntu-24.04  , dependencies: "-minimal"     , options: "-DPYTHON=no  -DUSEWX=no"               }
+          - { name: "nWXnPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DPYTHON=no  -DUSEWX=no"               }
+          - { name: "wWXnPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DPYTHON=no  -DUSEWX=yes -DUSESDL=yes" }
+          - { name: "nWXwPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes -DUSEWX=no"               }
+          - { name: "wWXwPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes -DUSEWX=yes -DUSESDL=yes" }
+          # - { name: "mini"    , os: macos-13      , dependencies: "-minimal"     , options: ""             }
+          # - { name: "wWX"     , os: macos-13      , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DUSESDL=yes"  }
+          # - { name: "nWX"     , os: macos-13      , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
+          # - { name: "wPY"     , os: macos-13      , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
+          # - { name: "m15"     , os: macos-15-intel, dependencies: "-smb-nfs-neon", options: "-DPYTHON=no"  }
+
+    #if: ${{ matrix.job.name }} != 'wPY' || ${{ inputs.wPY }}
+    steps:
+    - name: Checkout source code
+      uses: deep-soft/checkout@v6
+      with:
+        submodules: recursive
+
+    - name: Get branch name
+      id: get-branch-name
+      run: |
+        if [ "${{ github.event_name }}" == "pull_request" ]; then
+          echo "BRANCH_NAME=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+        else
+          echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    - name: Print branch name
+      shell: bash
+      run: |
+        branch_name=${{ steps.get-branch-name.outputs.BRANCH_NAME }};
+        echo "Branch name: $branch_name"
+        if [ $branch_name != ${{ env.default_branch }} ]; then
+          PROG_NAME=${{ env.PROG_NAME }}-$branch_name;
+          echo "PROG_NAME=$PROG_NAME" >> $GITHUB_ENV;
+        fi
+
+    - name: Print program name
+      shell: bash
+      run: |
+        echo "PROG_NAME=["${{ env.PROG_NAME }}"]";
+
+    - name: get os version
+      shell: bash
+      run: |
+        set -x;
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          _os_name_="macos";
+          _os_version_=$(sw_vers | grep ProductVersion | cut -d':' -f2 | xargs echo -n);
+          _os_arch_=$(uname -m);
+          echo "OS_VERSION=$_os_name_-$_os_version_-$_os_arch_" >> $GITHUB_ENV;
+        else
+          _os_release_file_="/etc/os-release"
+          if [ -f $_os_release_file_ ]; then
+            echo "-1-";
+            cat "$_os_release_file_";
+            echo "-2-";
+               _os_name_=$(cat $_os_release_file_ | grep         "^ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \");
+            _os_version_=$(cat $_os_release_file_ | grep "^VERSION_ID=" | head -n 1 | awk -F = '{print $2}' | tr -d \");
+            _os_arch_=$(uname -m);
+            echo "OS_VERSION=$_os_name_-$_os_version_-$_os_arch_" >> $GITHUB_ENV;
+          fi
+        fi
+
+    - name: print os version
+      shell: bash
+      run: |
+        echo "OS_VERSION=${{ env.OS_VERSION }}";
+
+    - name: set program version
+      shell: bash
+      run: |
+        set -x;
+        _version_=$(cat packaging/version);
+        echo "PROG_VERSION=v$_version_" >> $GITHUB_ENV;
+
+    - name: print program version
+      shell: bash
+      run: |
+        echo "PROG_VERSION=${{ env.PROG_VERSION }}";
+
+    - name: set env.SED_EXE and macOS install gnu-sed
+      #if: ${{ startsWith(matrix.job.os, 'macos') }}
+      shell: bash
+      run: |
+        SED_EXE=$(which sed);
+        echo "SED_EXE=$SED_EXE";
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          # brew install gnu-sed;
+          brew reinstall gnu-sed;
+          export PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH";
+          SED_EXE=$(which sed);
+        fi
+        echo "SED_EXE=$SED_EXE";
+        echo "SED_EXE=$SED_EXE" >> $GITHUB_ENV;
+        #ls -la $SED_EXE;
+        #export sed=$SED_EXE
+        #which sed
+
+    - name: MULTIARC_PDF patch 1
+      if: ${{ inputs.MULTIARC_PDF }}
+      #continue-on-error: true
+      shell: bash
+      env:
+        DEBUG_MODE_1: ${{ inputs.DEBUG_MODE_1 }}
+        DEBUG_MODE_2: ${{ inputs.DEBUG_MODE_2 }}
+      run: |
+        if [[ -f bins/multiarc-pdf-patch.sh ]]; then
+          bash bins/multiarc-pdf-patch.sh "bins/sed-stuff-multiarc-pdf.txt" "${{ inputs.MULTIARC_PDF_PARAMS }}";
+        fi
+
+    - name: sed-stuff
+      if: ${{ inputs.SED_STUFF }}
+      continue-on-error: true
+      shell: bash
+      env:
+        DEBUG_MODE_1: ${{ inputs.DEBUG_MODE_1 }}
+        DEBUG_MODE_2: ${{ inputs.DEBUG_MODE_2 }}
+      run: |
+        bash bins/sed-stuff.sh "_" "${{ inputs.SED_STUFF_PARAMS }}";
+
+    - name: extra scripts
+      continue-on-error: true
+      shell: bash
+      run: |
+        if [ -d bins/extra-scripts ]; then
+          cp bins/extra-scripts/*.sh far2l/bootstrap || true;
+          cp bins/extra-scripts/*.1  far2l/bootstrap || true;
+        fi
+      
+    - name: extra plugins
+      if: ${{ inputs.PLUGINS_EXTRA }}
+      shell: bash
+      run: |
+        if [[ ${{ matrix.job.name }} != "minimal" ]]; then
+          if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+            # extra_plugin_list1='netcfgplugin sqlplugin';
+            extra_plugin_list1='';
+            extra_plugin_list2='SimpleComment EditWrap';
+          else
+            # extra_plugin_list1='netcfgplugin sqlplugin processes';
+            extra_plugin_list1='netcfgplugin sqlplugin processes';
+            extra_plugin_list2='SimpleComment EditWrap jumpword';
+          fi
+          if [[ ${{ matrix.job.os }} =~ "macos-13" ]]; then
+            # extra_plugin_list1='sqlplugin';
+            extra_plugin_list1='';
+            extra_plugin_list2='SimpleComment EditWrap';
+          fi
+
+
+          # add new extra plugins
+          
+          for plug1 in $extra_plugin_list1 ; do
+            echo "ExtraPluginS=$plug1";
+            git clone --depth 1 https://github.com/deep-soft/far2l-$plug1.git && \
+            ( echo "mv far2l-$plug1 $plug1" && \
+              mv far2l-$plug1 $plug1 && \
+              cd $plug1 && \
+              find . -mindepth 1 -name 'src' -prune -o -exec rm -rf {} + && \
+              mv src/* . && rm -rf src )
+            echo "add_subdirectory($plug1)" >> CMakeLists.txt;
+            echo "ExtraPluginF=$plug1";
+          done
+          
+          for plug2 in $extra_plugin_list2 ; do
+            echo "ExtraPluginS=$plug2";
+            git clone --depth 1 https://github.com/deep-soft/far2l-$plug2.git && \
+            ( echo "mv far2l-$plug2 $plug2" && \
+              mv far2l-$plug2 $plug2 )
+            echo "add_subdirectory($plug2)" >> CMakeLists.txt
+            echo "ExtraPluginF=$plug2";
+          done
+          grep "add_subdirectory" CMakeLists.txt
+        fi
+
+    - name: add dependencies
+      shell: bash
+      run: |
+        if [[ -f bins/${{ matrix.job.os }}/dependencies.txt ]]; then
+          cp bins/${{ matrix.job.os }}/dependencies.txt dependencies.txt;
+        fi
+        if [[ -f bins/${{ matrix.job.os }}/dependencies-minimal.txt ]]; then
+          cp bins/${{ matrix.job.os }}/dependencies-minimal.txt dependencies-minimal.txt;
+        fi
+        if [[ -f bins/${{ matrix.job.os }}/dependencies-nowx.txt ]]; then
+          cp bins/${{ matrix.job.os }}/dependencies-nowx.txt dependencies-nowx.txt;
+        fi
+        cp dependencies.txt dependencies-smb-nfs-neon.txt;
+        if [[ ${{ matrix.job.name }} =~ "noWXwPY" ]]; then
+          cp dependencies-nowx.txt dependencies-smb-nfs-neon.txt;
+        fi
+        echo "" >> dependencies-smb-nfs-neon.txt;
+        echo "libsmbclient-dev" >> dependencies-smb-nfs-neon.txt;
+        echo "libnfs-dev" >> dependencies-smb-nfs-neon.txt;
+        echo "libneon27-dev" >> dependencies-smb-nfs-neon.txt;
+        # echo "libneon*-dev" >> dependencies-smb-nfs-neon.txt;
+
+    - name: Dependencies
+      continue-on-error: true
+      run: |
+        if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
+          sudo apt-get update ; sudo apt-get -y install $(cat dependencies${{ matrix.job.dependencies }}.txt);
+        fi
+        if [[ ${{ matrix.job.os }} =~ "macos-13" ]]; then
+          #brew bundle -v;
+          #export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/openssl/lib/pkgconfig:$(brew --prefix)/opt/libarchive/lib/pkgconfig";
+          #echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV;
+          # brew reinstall libxau tree;
+          # ls /opt/homebrew/Cellar/libxau/1.0.11/lib/libXau* || true;
+          # brew reinstall libxau tree uchardet xml2 wxwidgets libxi samba libnfs neon libssh libarchive pcre;
+          brew install libxau tree uchardet xml2 wxwidgets libxi libnfs neon samba libssh libarchive pcre;
+          brew reinstall libxau tree;
+          # Relink 'keg-only' packages
+          brew link libarchive --force;
+          brew link libxau --force;
+          brew unlink libxau && brew link libxau;
+          ls /usr/local/Cellar/libxau/*/lib/libXau* || true;
+        fi
+        if [[ ${{ matrix.job.os }} =~ "macos-15-intel" ]]; then
+          brew install uchardet libxml2 wxwidgets libxi samba libnfs neon libssh libarchive;
+        fi
+
+    - name: Relink 'keg-only' packages
+      run: |
+        if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
+          brew link libarchive --force
+        fi
+
+# source archive - begin
+    - name: create source archive
+      if: always() && matrix.job.name == 'min' && matrix.job.os == 'ubuntu-22.04'
+      run: |
+        echo "create source archive";
+
+    - name: Create source archive
+      if: always() && matrix.job.name == 'min' && matrix.job.os == 'ubuntu-22.04'
+      continue-on-error: true
+      uses: deep-soft/zip-release@v3
+      # archive name is ${{ env.ZIP_RELEASE_ARCHIVE }}
+      with:
+        type: 'tar.xz'
+        filename: "${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-src"
+        directory: '.'
+        exclusions: '.git/objects'
+        recursive_exclusions: '.git/objects'
+        path: '.'
+        env_variable: ASSET_SRC
+# source archive - end
+
+    - name: Create Build Environment
+      # Some projects don't allow in-source building, so create a separate build directory
+      # We'll use this as our working directory for all subsequent commands
+      # Create a separate build directory as working directory for all subsequent commands
+      # cmake -E make_directory ${{github.workspace}}/_build
+      run: |
+        mkdir -p _build
+
+    - name: Configure CMake
+      # Use a bash shell so we can use the same syntax for environment variable
+      # access regardless of the host operating system
+      shell: bash
+      # working-directory: ${{github.workspace}}/build
+      # Note the current convention is to use the -S and -B options here to specify source 
+      # and build directories, but this is only available with CMake 3.13 and higher.  
+      # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+      run: |
+        if [[ ${{ matrix.job.os }} =~ "ubuntu" ]]; then
+          # cmake $GITHUB_WORKSPACE -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
+          cmake -S . -B _build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
+        fi
+        if [[ ${{ matrix.job.os }} =~ "macos-15" ]]; then
+          cmake -S . -B _build -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_TYPE ${{ matrix.job.options }};
+        fi
+
+    - name: Build
+      working-directory: ${{github.workspace}}/_build
+      shell: bash
+      # Execute the build.  You can specify a specific target with "--target <NAME>"
+      run: |
+        cmake --build . --config $BUILD_TYPE;
+
+    - name: Prepare for package
+      continue-on-error: true
+      working-directory: '${{github.workspace}}/_build/install'
+      shell: bash
+      run: |
+        echo 'Prepare for package';
+        echo "Version: " ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }} > 00-info.txt;
+        if [ -f neofetch.sh ]; then
+          bash neofetch.sh --stdout >> 00-info.txt;
+        fi
+
+    - name: Build package
+      working-directory: ${{github.workspace}}/_build
+      shell: bash
+      run: |
+        cmake --build . --target package;
+        if [[ ${{ matrix.job.os }} =~ "macos" ]]; then
+          mv ${{ env.PROG_NAME }}*.dmg    ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.dmg;
+        else
+          mv ${{ env.PROG_NAME }}*.deb    ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.deb;
+          mv ${{ env.PROG_NAME }}*.tar.gz ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.tar.gz;
+        fi
+
+    - name: File Tree
+      continue-on-error: true
+      working-directory: ${{github.workspace}}/_build
+      shell: bash
+      run: |
+        tree;
+
+#    - name: Packing Artifact
+#      uses: deep-soft/upload-artifact@v4
+#      with:
+#        name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ matrix.job.name }}
+#        path: ${{github.workspace}}/_build/install
+
+    - name: Prepare for zip
+      continue-on-error: true
+      working-directory: '${{github.workspace}}/_build/install'
+      shell: bash
+      run: |
+        echo 'Prepare for zip';
+        if [ -f far2l-lang-del-files-3.sh ]; then
+          bash far2l-lang-del-files-3.sh;
+        fi
+        tree;
+
+    - name: Archive Release
+      continue-on-error: true
+      uses: deep-soft/zip-release@v2
+      with:
+        type: 'zip'
+        filename: '${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}.zip'
+        directory: '${{github.workspace}}/_build/install'
+        path: '.'
+        # exclusions: '*.git* /*node_modules/* .editorconfig'
+        #exclusions: '*Bel.lng *Rus.lng *Cze.lng *Ger.lng *Hun.lng *Pol.lng *Spa.lng *Ukr.lng *bel.lng *rus.lng *calcb.lng *calcr.lng *colorerb.lng *colorerr.lng *editorcomp_be.lng *editorcomp_ru.lng *isrcrus.lng'
+        #recursive_exclusions: '*Bel.lng *Rus.lng *Cze.lng *Ger.lng *Hun.lng *Pol.lng *Spa.lng *Ukr.lng *bel.lng *rus.lng *calcb.lng *calcr.lng *colorerb.lng *colorerr.lng *editorcomp_be.lng *editorcomp_ru.lng *isrcrus.lng'
+        debug: yes
+
+    - name: Publish Release
+      continue-on-error: true
+      uses: deep-soft/action-gh-release@v2.1
+      with:
+        draft: true
+        tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
+        files: |
+          ${{ env.ZIP_RELEASE_ARCHIVE }}
+          ${{ env.ASSET_SRC }}
+          ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.deb
+          ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.tar.gz
+          ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.dmg
+
+    - name: Archive Release - All
+      if: ${{ inputs.make_archive_all }}
+      uses: deep-soft/zip-release@v2
+      with:
+        type: 'zip'
+        filename: '${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-${{ env.OS_VERSION }}-${{ matrix.job.name }}-ALL.zip'
+        directory: '${{github.workspace}}'
+        path: '.'
+        # exclusions: '*.git* /*node_modules/* .editorconfig'
+        exclusions: ''
+        recursive_exclusions: ''
+        env_variable: ZIP_RELEASE_ARCHIVE_ALL
+        debug: yes
+
+    - name: Publish Release - All
+      if: ${{ inputs.make_archive_all }}
+      continue-on-error: true
+      uses: deep-soft/action-gh-release@v2.1
+      with:
+        draft: true
+        tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-ALL
+        files: |
+          ${{ env.ZIP_RELEASE_ARCHIVE_ALL }}
+
+    - name: Test
+      if: ${{ inputs.run_tests }}
+      working-directory: ${{github.workspace}}/_build
+      shell: bash
+      # Execute tests defined by the CMake configuration.  
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      run: ctest -C $BUILD_TYPE
+
+
+
+
+
