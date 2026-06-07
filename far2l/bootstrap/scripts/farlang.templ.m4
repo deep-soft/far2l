@@ -16651,6 +16651,17 @@ MenuCompareFolders
 "&Порівняння тек"
 "Пара&ўнанне каталогаў"
 
+MenuCompareFiles
+"Сравнение &файлов   Ctrl+Shift+C"
+"Compare &files Ctrl+Shift+C"
+"Po&rovnat soubory"
+"Dateien verglei&chen"
+"Fájlok össze&hasonlítása"
+"Porówna&j pliki      Ctrl+Shift+C"
+"&Comparar archivos Ctrl+Shift+C"
+"Порівняння &файлів   Ctrl+Shift+C"
+"Параўнанне &файлаў   Ctrl+Shift+C"
+
 MenuUserMenu
 "Меню пользовател&я"
 "Edit user &menu"
