@@ -12,6 +12,7 @@
 #include "codepage.hpp"
 #include "colors.hpp"
 #include "ctrlobj.hpp"
+#include "edit.hpp"
 #include "editor.hpp"
 #include "exitcode.hpp"
 #include "farcolors.hpp"
@@ -82,7 +83,8 @@ void StripEol(FARString &Line)
 }
 
 bool LoadTextFile(const FARString &Path, std::vector<FARString> &Lines,
-		std::vector<FARString> *EditorLines = nullptr, UINT *DetectedCodePage = nullptr)
+		std::vector<FARString> *EditorLines = nullptr, UINT *DetectedCodePage = nullptr,
+		bool *DetectedSignature = nullptr)
 {
 	File Src;
 	if (!Src.Open(Path.CPtr(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
@@ -100,6 +102,8 @@ bool LoadTextFile(const FARString &Path, std::vector<FARString> &Lines,
 		CodePage = Opt.EdOpt.DefaultCodePage;
 	if (DetectedCodePage)
 		*DetectedCodePage = CodePage;
+	if (DetectedSignature)
+		*DetectedSignature = SignatureFound;
 
 	if (!IsUnicodeOrUtfCodePage(CodePage))
 		Src.SetPointer(0, nullptr, FILE_BEGIN);
@@ -122,6 +126,169 @@ bool LoadTextFile(const FARString &Path, std::vector<FARString> &Lines,
 	}
 
 	return true;
+}
+
+void AppendRawLines(const wchar_t *Data, int Length, std::vector<FARString> &Lines)
+{
+	Lines.clear();
+	if (!Data || Length <= 0)
+		return;
+
+	const wchar_t *Ptr = Data;
+	const wchar_t *End = Data + Length;
+	while (Ptr < End) {
+		const wchar_t *LineStart = Ptr;
+		while (Ptr < End && *Ptr != L'\r' && *Ptr != L'\n')
+			++Ptr;
+
+		if (Ptr < End) {
+			if (*Ptr == L'\r' && Ptr + 2 < End && Ptr[1] == L'\r' && Ptr[2] == L'\n')
+				Ptr+= 3;
+			else if (*Ptr == L'\r' && Ptr + 1 < End && Ptr[1] == L'\n')
+				Ptr+= 2;
+			else
+				++Ptr;
+		}
+
+		FARString Line(LineStart, static_cast<int>(Ptr - LineStart));
+		StripEol(Line);
+		Lines.emplace_back(Line);
+	}
+}
+
+bool ShouldWriteSignature(UINT CodePage, bool SignatureFound)
+{
+	switch (CodePage) {
+		case CP_UTF32LE:
+		case CP_UTF32BE:
+		case CP_UTF16LE:
+		case CP_UTF16BE:
+		case CP_UTF8:
+			return SignatureFound;
+		default:
+			return false;
+	}
+}
+
+DWORD SignatureForCodePage(UINT CodePage, DWORD &Length)
+{
+	Length = 0;
+	switch (CodePage) {
+		case CP_UTF32LE:
+			Length = 4;
+			return SIGN_UTF32LE;
+		case CP_UTF32BE:
+			Length = 4;
+			return SIGN_UTF32BE;
+		case CP_UTF16LE:
+			Length = 2;
+			return SIGN_UTF16LE;
+		case CP_UTF16BE:
+			Length = 2;
+			return SIGN_UTF16BE;
+		case CP_UTF8:
+			Length = 3;
+			return SIGN_UTF8;
+		default:
+			return 0;
+	}
+}
+
+bool WriteAll(File &Dst, const void *Data, size_t Length)
+{
+	const char *Ptr = static_cast<const char *>(Data);
+	while (Length != 0) {
+		const DWORD Chunk = static_cast<DWORD>(std::min<size_t>(Length, std::numeric_limits<DWORD>::max()));
+		DWORD Written = 0;
+		if (!Dst.Write(Ptr, Chunk, &Written) || Written == 0)
+			return false;
+		Ptr+= Written;
+		Length-= Written;
+	}
+	return true;
+}
+
+bool WriteEncoded(File &Dst, UINT CodePage, const wchar_t *Data, int Length)
+{
+	if (!Length)
+		return true;
+
+	if (CodePage == CP_WIDE_LE)
+		return WriteAll(Dst, Data, static_cast<size_t>(Length) * sizeof(wchar_t));
+
+	std::string Utf8;
+	if (CodePage == CP_UTF8) {
+		Wide2MB(Data, Length, Utf8);
+		return WriteAll(Dst, Utf8.data(), Utf8.size());
+	}
+
+	const int Bytes = WINPORT(WideCharToMultiByte)(CodePage, 0, Data, Length, nullptr, 0, nullptr, nullptr);
+	if (Bytes <= 0)
+		return false;
+
+	std::vector<char> Buffer(Bytes);
+	const int Written = WINPORT(WideCharToMultiByte)(CodePage, 0, Data, Length, Buffer.data(),
+			static_cast<int>(Buffer.size()), nullptr, nullptr);
+	return Written > 0 && WriteAll(Dst, Buffer.data(), static_cast<size_t>(Written));
+}
+
+bool IsEditorContentChangeKey(FarKey Key)
+{
+	switch (Key) {
+		case KEY_BS:
+		case KEY_CTRLBS:
+		case KEY_DEL:
+		case KEY_NUMDEL:
+		case KEY_ENTER:
+		case KEY_NUMENTER:
+		case KEY_SHIFTENTER:
+		case KEY_CTRLV:
+		case KEY_SHIFTINS:
+		case KEY_SHIFTNUMPAD0:
+		case KEY_CTRLP:
+		case KEY_CTRLM:
+		case KEY_CTRLX:
+		case KEY_SHIFTDEL:
+		case KEY_SHIFTNUMDEL:
+		case KEY_SHIFTDECIMAL:
+		case KEY_CTRLD:
+		case KEY_CTRLY:
+		case KEY_CTRLT:
+		case KEY_CTRLDEL:
+		case KEY_CTRLNUMDEL:
+		case KEY_CTRLDECIMAL:
+		case KEY_CTRLQ:
+		case KEY_OP_PLAINTEXT:
+		case KEY_ALTBS:
+		case KEY_CTRLZ:
+		case KEY_CTRLSHIFTZ:
+		case KEY_CTRLF7:
+		case KEY_SHIFTF7:
+		case KEY_ALTU:
+		case KEY_ALTI:
+		case KEY_CTRLK:
+		case KEY_CTRLI:
+		case KEY_OP_XLAT:
+			return true;
+		default:
+			break;
+	}
+
+	FarKey InsertKey = Key;
+	return TranslateInsertKey(InsertKey);
+}
+
+bool IsEditorSearchKey(FarKey Key)
+{
+	switch (Key) {
+		case KEY_F7:
+		case KEY_CTRLF7:
+		case KEY_SHIFTF7:
+		case KEY_ALTF7:
+			return true;
+		default:
+			return false;
+	}
 }
 
 bool ResolvePanelFile(Panel *Source, FARString &Path)
@@ -499,77 +666,12 @@ void BuildInlineDiffRanges(const FARString &Left, const FARString &Right,
 	RightRanges = InlineRangesFromMarks(RightChanged);
 }
 
-bool IsEditorCursorKey(FarKey Key)
-{
-	switch (Key) {
-		case KEY_LEFT:
-		case KEY_NUMPAD4:
-		case KEY_RIGHT:
-		case KEY_NUMPAD6:
-		case KEY_UP:
-		case KEY_NUMPAD8:
-		case KEY_DOWN:
-		case KEY_NUMPAD2:
-		case KEY_HOME:
-		case KEY_NUMPAD7:
-		case KEY_END:
-		case KEY_NUMPAD1:
-		case KEY_PGUP:
-		case KEY_NUMPAD9:
-		case KEY_PGDN:
-		case KEY_NUMPAD3:
-		case KEY_CTRLLEFT:
-		case KEY_CTRLNUMPAD4:
-		case KEY_CTRLRIGHT:
-		case KEY_CTRLNUMPAD6:
-		case KEY_CTRLHOME:
-		case KEY_CTRLNUMPAD7:
-		case KEY_CTRLEND:
-		case KEY_CTRLNUMPAD1:
-		case KEY_SHIFTHOME:
-		case KEY_SHIFTNUMPAD7:
-		case KEY_SHIFTEND:
-		case KEY_SHIFTNUMPAD1:
-		case KEY_SHIFTLEFT:
-		case KEY_SHIFTNUMPAD4:
-		case KEY_SHIFTRIGHT:
-		case KEY_SHIFTNUMPAD6:
-		case KEY_SHIFTUP:
-		case KEY_SHIFTNUMPAD8:
-		case KEY_SHIFTDOWN:
-		case KEY_SHIFTNUMPAD2:
-		case KEY_SHIFTPGUP:
-		case KEY_SHIFTNUMPAD9:
-		case KEY_SHIFTPGDN:
-		case KEY_SHIFTNUMPAD3:
-		case KEY_CTRLSHIFTLEFT:
-		case KEY_CTRLSHIFTNUMPAD4:
-		case KEY_CTRLSHIFTRIGHT:
-		case KEY_CTRLSHIFTNUMPAD6:
-			return true;
-		default:
-			return false;
-	}
-}
-
-bool IsEditorCopyKey(FarKey Key)
-{
-	switch (Key) {
-		case KEY_CTRLC:
-		case KEY_CTRLINS:
-		case KEY_CTRLNUMPAD0:
-		case KEY_CTRLADD:
-			return true;
-		default:
-			return false;
-	}
-}
-
 class DiffEditorPane
 {
 	ScreenObject *m_owner = nullptr;
 	FARString m_path;
 	UINT m_codepage = CP_AUTODETECT;
+	bool m_signatureFound = false;
 	std::vector<FARString> m_lines;
 	std::unique_ptr<Editor> m_editor;
 	bool m_colorerOpened = false;
@@ -620,7 +722,7 @@ public:
 		m_editor->SetVirtualFileName(m_path.CPtr());
 
 		std::vector<FARString> EditorLines;
-		if (!LoadTextFile(m_path, m_lines, &EditorLines, &m_codepage))
+		if (!LoadTextFile(m_path, m_lines, &EditorLines, &m_codepage, &m_signatureFound))
 			return false;
 
 		m_editor->FreeAllocatedData(false);
@@ -635,7 +737,8 @@ public:
 		}
 
 		m_editor->EndBulkLoad();
-		m_editor->SetReadOnly(TRUE);
+		m_editor->MarkSaved();
+		m_editor->SetReadOnly(FALSE);
 		m_editor->SetShowCursor(false);
 		m_editor->SetShowScrollBar(FALSE);
 		m_editor->SetShowLineNumbers(TRUE);
@@ -661,7 +764,7 @@ public:
 
 	const FARString &Path() const { return m_path; }
 	const std::vector<FARString> &Lines() const { return m_lines; }
-	Editor *GetEditor() const { return m_editor.get(); }
+	bool Modified() const { return m_editor && m_editor->IsFileModified(); }
 	void SetActive(bool Active)
 	{
 		if (m_editor)
@@ -725,6 +828,99 @@ public:
 		PluginEditorScope Scope(m_editor.get());
 		return m_editor->ProcessKey(Key) != 0;
 	}
+	bool RefreshLinesFromEditor()
+	{
+		if (!m_editor)
+			return false;
+
+		wchar_t *RawData = nullptr;
+		int RawLength = 0;
+		if (!m_editor->GetRawData(&RawData, RawLength))
+			return false;
+
+		std::vector<FARString> NewLines;
+		AppendRawLines(RawData, RawLength, NewLines);
+		free(RawData);
+
+		if (NewLines == m_lines)
+			return false;
+
+		m_lines = std::move(NewLines);
+		return true;
+	}
+	bool Save()
+	{
+		if (!m_editor)
+			return false;
+
+		wchar_t *RawData = nullptr;
+		int RawLength = 0;
+		if (!m_editor->GetRawData(&RawData, RawLength))
+			return false;
+
+		File Dst;
+		bool Ok = Dst.Open(m_path.CPtr(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_ALWAYS,
+				FILE_ATTRIBUTE_ARCHIVE | FILE_FLAG_SEQUENTIAL_SCAN);
+		if (Ok) {
+			if (ShouldWriteSignature(m_codepage, m_signatureFound)) {
+				DWORD SignatureLength = 0;
+				const DWORD Signature = SignatureForCodePage(m_codepage, SignatureLength);
+				Ok = SignatureLength == 0 || WriteAll(Dst, &Signature, SignatureLength);
+			}
+
+			Ok = Ok && WriteEncoded(Dst, m_codepage, RawData, RawLength);
+			Ok = Ok && Dst.SetEnd();
+		}
+
+		free(RawData);
+		if (Ok) {
+			RefreshLinesFromEditor();
+			m_editor->MarkSaved();
+		}
+		return Ok;
+	}
+	bool ReplaceLines(int StartLine, int DeleteCount, const std::vector<FARString> &NewLines)
+	{
+		if (!m_editor)
+			return false;
+
+		PluginEditorScope Scope(m_editor.get());
+		EditorInfo Info{};
+		if (!m_editor->EditorControl(ECTL_GETINFO, &Info))
+			return false;
+
+		const int TotalLines = std::max(1, Info.TotalLines);
+		StartLine = std::clamp(StartLine, 0, TotalLines);
+		DeleteCount = std::clamp(DeleteCount, 0, TotalLines - StartLine);
+
+		if (NewLines.empty()) {
+			if (!DeleteLines(StartLine, DeleteCount))
+				return false;
+			RefreshLinesFromEditor();
+			return true;
+		}
+
+		const bool ReuseFirstLine = DeleteCount > 0 || (m_lines.empty() && TotalLines == 1);
+		size_t FirstInsertedLine = 0;
+		if (ReuseFirstLine) {
+			if (!SetLine(StartLine, NewLines.front()))
+				return false;
+			if (!DeleteLines(StartLine + 1, DeleteCount > 0 ? DeleteCount - 1 : 0))
+				return false;
+			FirstInsertedLine = 1;
+			++StartLine;
+		} else if (!DeleteLines(StartLine, DeleteCount)) {
+			return false;
+		}
+
+		for (size_t I = FirstInsertedLine; I < NewLines.size(); ++I) {
+			if (!InsertLine(StartLine + static_cast<int>(I - FirstInsertedLine), NewLines[I]))
+				return false;
+		}
+
+		RefreshLinesFromEditor();
+		return true;
+	}
 	void SetCursorByVisualLine(int Line, int VisualLine, int CellOffset)
 	{
 		if (!m_editor || Line < 0)
@@ -764,8 +960,72 @@ public:
 	}
 	int CursorLine() const { return m_editor ? m_editor->GetCursorLine() : 0; }
 	int CursorVisualLine() const { return m_editor ? m_editor->GetCursorVisualLine() : 0; }
+	int CursorCol() const { return m_editor ? m_editor->GetCurCol() : 0; }
 
 private:
+	bool SetEditorPosition(int Line, int Pos)
+	{
+		EditorSetPosition Position{};
+		Position.CurLine = Line;
+		Position.CurPos = Pos;
+		Position.CurTabPos = -1;
+		Position.TopScreenLine = -1;
+		Position.LeftPos = -1;
+		Position.Overtype = -1;
+		return m_editor->EditorControl(ECTL_SETPOSITION, &Position) != 0;
+	}
+
+	int LineLength(int Line)
+	{
+		EditorGetString String{};
+		String.StringNumber = Line;
+		return m_editor->EditorControl(ECTL_GETSTRING, &String) && String.StringLength > 0 ? String.StringLength : 0;
+	}
+
+	bool SetInsertPosition(int Line)
+	{
+		EditorInfo Info{};
+		if (!m_editor->EditorControl(ECTL_GETINFO, &Info))
+			return false;
+
+		const int TotalLines = std::max(1, Info.TotalLines);
+		if (Line >= TotalLines)
+			return SetEditorPosition(TotalLines - 1, LineLength(TotalLines - 1));
+		return SetEditorPosition(std::max(0, Line), 0);
+	}
+
+	bool SetLine(int Line, const FARString &Text)
+	{
+		EditorSetString String{};
+		String.StringNumber = Line;
+		String.StringText = Text.CPtr();
+		String.StringEOL = nullptr;
+		String.StringLength = static_cast<int>(Text.GetLength());
+		return m_editor->EditorControl(ECTL_SETSTRING, &String) != 0;
+	}
+
+	bool InsertLine(int Line, const FARString &Text)
+	{
+		if (!SetInsertPosition(Line))
+			return false;
+		if (!m_editor->EditorControl(ECTL_INSERTSTRING, nullptr))
+			return false;
+		return SetLine(Line, Text);
+	}
+
+	bool DeleteLines(int StartLine, int Count)
+	{
+		if (Count <= 0)
+			return true;
+		if (!SetEditorPosition(StartLine, 0))
+			return false;
+		for (int I = 0; I < Count; ++I) {
+			if (!m_editor->EditorControl(ECTL_DELETESTRING, nullptr))
+				return false;
+		}
+		return true;
+	}
+
 	void UpdateColorer()
 	{
 		if (!CtrlObject || !m_editor)
@@ -801,7 +1061,21 @@ class FileDiffFrame : public Frame
 		Right
 	};
 
+	enum class MergeDirection
+	{
+		LeftToRight,
+		RightToLeft
+	};
+
+	struct LineRange
+	{
+		int Begin = 0;
+		int End = 0;
+		bool HasLines = false;
+	};
+
 	static constexpr int PreferredGutterWidth = 3;
+	static constexpr DWORD DiffRefreshDelay = 150;
 
 	FARString m_leftPath;
 	FARString m_rightPath;
@@ -816,6 +1090,11 @@ class FileDiffFrame : public Frame
 	int m_gutterWidth = 0;
 	int m_rightWidth = 0;
 	ActivePane m_activePane = ActivePane::Left;
+	bool m_gutterActive = false;
+	size_t m_selectedHunk = InvalidIndex;
+	MergeDirection m_selectedDirection = MergeDirection::LeftToRight;
+	bool m_pendingDiffRefresh = false;
+	DWORD m_lastEditTick = 0;
 
 public:
 	FileDiffFrame(const FARString &LeftPath, const FARString &RightPath)
@@ -832,11 +1111,7 @@ public:
 			return;
 		}
 		UpdateActivePane();
-
-		m_rows = BuildLineDiff(m_leftPane.Lines(), m_rightPane.Lines());
-		BuildDiffHunks();
-		BuildInlineDiffs();
-		RebuildScreenRows();
+		RebuildDiffModel();
 		SetExitCode(TRUE);
 		FrameManager->InsertFrame(this);
 	}
@@ -870,14 +1145,47 @@ public:
 	virtual int ProcessKey(FarKey Key)
 	{
 		switch (Key) {
+			case KEY_IDLE:
+				if (FlushPendingDiffRefresh(false))
+					Show();
+				return TRUE;
 			case KEY_ESC:
 			case KEY_F10:
-				FrameManager->DeleteFrame();
+				Close();
+				return TRUE;
+			case KEY_F2:
+				SaveActivePane();
+				return TRUE;
+			case KEY_F5:
+				MergeCurrentSelection();
 				return TRUE;
 			case KEY_TAB:
 			case KEY_SHIFTTAB:
-				SwitchActivePane();
+				SwitchFocus(Key == KEY_SHIFTTAB ? -1 : 1);
 				return TRUE;
+			case KEY_ENTER:
+			case KEY_NUMENTER:
+				if (m_gutterActive) {
+					MergeCurrentSelection();
+					return TRUE;
+				}
+				break;
+			case KEY_LEFT:
+			case KEY_NUMPAD4:
+				if (m_gutterActive) {
+					SelectGutterDirection(MergeDirection::RightToLeft);
+					Show();
+					return TRUE;
+				}
+				break;
+			case KEY_RIGHT:
+			case KEY_NUMPAD6:
+				if (m_gutterActive) {
+					SelectGutterDirection(MergeDirection::LeftToRight);
+					Show();
+					return TRUE;
+				}
+				break;
 			case KEY_F12:
 				return FrameManager->ProcessKey(KEY_F12);
 			case KEY_MSWHEEL_UP:
@@ -888,21 +1196,32 @@ public:
 				return TRUE;
 			case KEY_CTRLSHIFTUP:
 			case KEY_CTRLSHIFTNUMPAD8:
+				FlushPendingDiffRefresh(true);
 				NavigateDiff(-1);
 				return TRUE;
 			case KEY_CTRLSHIFTDOWN:
 			case KEY_CTRLSHIFTNUMPAD2:
+				FlushPendingDiffRefresh(true);
 				NavigateDiff(1);
 				return TRUE;
 		}
-		if (IsEditorCursorKey(Key)) {
-			ActiveEditorPane().ProcessKey(Key);
-			EnsureActiveCursorVisible();
-			Show();
+		if (m_gutterActive)
 			return TRUE;
-		}
-		if (IsEditorCopyKey(Key)) {
-			ActiveEditorPane().ProcessKey(Key);
+
+		const bool ContentChange = IsEditorContentChangeKey(Key);
+		const bool SearchKey = IsEditorSearchKey(Key);
+		if (ActiveEditorPane().ProcessKey(Key)) {
+			if (ContentChange)
+				ScheduleDiffRefresh();
+
+			if (SearchKey) {
+				FlushPendingDiffRefresh(true);
+				PlaceActiveCursorForSearch();
+			} else {
+				if (ContentChange)
+					return TRUE;
+				EnsureActiveCursorVisible();
+			}
 			Show();
 			return TRUE;
 		}
@@ -914,20 +1233,24 @@ public:
 		const int X = MouseEvent->dwMousePosition.X;
 		const int Y = MouseEvent->dwMousePosition.Y;
 
-		if (Y >= Y1 + 1 && Y <= Y2 - 1 && !MouseInsideGutter(X)) {
-			const ActivePane NewPane = X >= RightPaneX1() ? ActivePane::Right : ActivePane::Left;
-			if (NewPane != m_activePane) {
-				const size_t CursorIndex = ActiveCursorScreenIndex();
-				m_activePane = NewPane;
-				SyncActiveCursorToScreenIndex(CursorIndex);
-				UpdateActivePane();
-			}
-		}
-
 		if (MouseEvent->dwEventFlags == MOUSE_WHEELED) {
 			const short Delta = HIWORD(MouseEvent->dwButtonState);
 			Scroll(Delta > 0 ? -3 : 3);
 			return TRUE;
+		}
+
+		if (MouseInsideGutter(X) && Y >= Y1 + 1 && Y <= Y2 - 1)
+			return ProcessGutterMouse(*MouseEvent);
+
+		if (Y >= Y1 + 1 && Y <= Y2 - 1 && !MouseInsideGutter(X)) {
+			const ActivePane NewPane = X >= RightPaneX1() ? ActivePane::Right : ActivePane::Left;
+			if (NewPane != m_activePane || m_gutterActive) {
+				const size_t CursorIndex = ActiveCursorScreenIndex();
+				m_activePane = NewPane;
+				m_gutterActive = false;
+				SyncActiveCursorToScreenIndex(CursorIndex);
+				UpdateActivePane();
+			}
 		}
 
 		if (!MouseInsideActivePane(*MouseEvent))
@@ -1044,26 +1367,60 @@ private:
 		if (TargetScreenIndex == InvalidIndex || RowIndex >= m_rows.size())
 			return;
 
-		SelectPaneForRow(m_rows[RowIndex]);
 		m_top = std::min(TargetScreenIndex > 0 ? TargetScreenIndex - 1 : TargetScreenIndex, MaxTop());
-		SyncActiveCursorToScreenIndex(TargetScreenIndex);
+		if (m_gutterActive) {
+			SelectGutterHunk(HunkIndex, m_selectedDirection);
+			EnsureSelectedHunkVisible();
+		} else {
+			SelectPaneForRow(m_rows[RowIndex]);
+			SyncActiveCursorToScreenIndex(TargetScreenIndex);
+		}
 		UpdateActivePane();
 		Show();
 	}
 
-	void SwitchActivePane()
+	void SwitchFocus(int Direction)
 	{
 		const size_t CursorIndex = ActiveCursorScreenIndex();
-		m_activePane = m_activePane == ActivePane::Left ? ActivePane::Right : ActivePane::Left;
-		SyncActiveCursorToScreenIndex(CursorIndex);
+		if (Direction >= 0) {
+			if (!m_gutterActive && m_activePane == ActivePane::Left) {
+				if (!ActivateGutter(MergeDirection::LeftToRight)) {
+					m_activePane = ActivePane::Right;
+					SyncActiveCursorToScreenIndex(CursorIndex);
+				}
+			} else if (m_gutterActive) {
+				m_gutterActive = false;
+				m_activePane = ActivePane::Right;
+				SyncActiveCursorToSelectedHunk(CursorIndex);
+			} else {
+				m_activePane = ActivePane::Left;
+				SyncActiveCursorToScreenIndex(CursorIndex);
+			}
+		} else {
+			if (!m_gutterActive && m_activePane == ActivePane::Right) {
+				if (!ActivateGutter(MergeDirection::RightToLeft)) {
+					m_activePane = ActivePane::Left;
+					SyncActiveCursorToScreenIndex(CursorIndex);
+				}
+			} else if (m_gutterActive) {
+				m_gutterActive = false;
+				m_activePane = ActivePane::Left;
+				SyncActiveCursorToSelectedHunk(CursorIndex);
+			} else {
+				m_activePane = ActivePane::Right;
+				SyncActiveCursorToScreenIndex(CursorIndex);
+			}
+		}
 		UpdateActivePane();
 		Show();
 	}
 
 	void UpdateActivePane()
 	{
-		m_leftPane.SetActive(m_activePane == ActivePane::Left);
-		m_rightPane.SetActive(m_activePane == ActivePane::Right);
+		m_leftPane.SetActive(!m_gutterActive && m_activePane == ActivePane::Left);
+		m_rightPane.SetActive(!m_gutterActive && m_activePane == ActivePane::Right);
+		if (m_gutterActive)
+			SetCursorType(FALSE, 0);
 	}
 
 	DiffEditorPane &ActiveEditorPane()
@@ -1074,6 +1431,333 @@ private:
 	const DiffEditorPane &ActiveEditorPane() const
 	{
 		return m_activePane == ActivePane::Left ? m_leftPane : m_rightPane;
+	}
+
+	DiffEditorPane &Pane(ActivePane Pane)
+	{
+		return Pane == ActivePane::Left ? m_leftPane : m_rightPane;
+	}
+
+	const DiffEditorPane &Pane(ActivePane Pane) const
+	{
+		return Pane == ActivePane::Left ? m_leftPane : m_rightPane;
+	}
+
+	ActivePane SourcePane(MergeDirection Direction) const
+	{
+		return Direction == MergeDirection::LeftToRight ? ActivePane::Left : ActivePane::Right;
+	}
+
+	ActivePane TargetPane(MergeDirection Direction) const
+	{
+		return Direction == MergeDirection::LeftToRight ? ActivePane::Right : ActivePane::Left;
+	}
+
+	int RowLine(const DiffRow &Row, ActivePane Pane) const
+	{
+		return Pane == ActivePane::Left ? Row.Left : Row.Right;
+	}
+
+	LineRange HunkRange(size_t HunkIndex, ActivePane PaneSide) const
+	{
+		LineRange Range;
+		if (HunkIndex >= m_hunks.size())
+			return Range;
+
+		const DiffHunk &Hunk = m_hunks[HunkIndex];
+		for (size_t I = Hunk.FirstRow; I < Hunk.LastRow; ++I) {
+			const int Line = RowLine(m_rows[I], PaneSide);
+			if (Line < 0)
+				continue;
+			if (!Range.HasLines) {
+				Range.Begin = Line;
+				Range.HasLines = true;
+			}
+			Range.End = Line + 1;
+		}
+
+		if (!Range.HasLines) {
+			Range.Begin = InsertionLineForHunk(Hunk, PaneSide);
+			Range.End = Range.Begin;
+		}
+		return Range;
+	}
+
+	int InsertionLineForHunk(const DiffHunk &Hunk, ActivePane PaneSide) const
+	{
+		for (size_t I = Hunk.LastRow; I < m_rows.size(); ++I) {
+			const int Line = RowLine(m_rows[I], PaneSide);
+			if (Line >= 0)
+				return Line;
+		}
+		return static_cast<int>(Pane(PaneSide).Lines().size());
+	}
+
+	bool CanMergeDirection(size_t HunkIndex, MergeDirection Direction) const
+	{
+		return HunkRange(HunkIndex, SourcePane(Direction)).HasLines;
+	}
+
+	bool CanMergeHunk(size_t HunkIndex) const
+	{
+		return CanMergeDirection(HunkIndex, MergeDirection::LeftToRight)
+				|| CanMergeDirection(HunkIndex, MergeDirection::RightToLeft);
+	}
+
+	void ExtractHunkLines(size_t HunkIndex, ActivePane PaneSide, std::vector<FARString> &Lines) const
+	{
+		Lines.clear();
+		const LineRange Range = HunkRange(HunkIndex, PaneSide);
+		if (!Range.HasLines)
+			return;
+
+		const std::vector<FARString> &PaneLines = Pane(PaneSide).Lines();
+		for (int I = Range.Begin; I < Range.End && I < static_cast<int>(PaneLines.size()); ++I)
+			Lines.emplace_back(PaneLines[I]);
+	}
+
+	bool SelectGutterHunk(size_t HunkIndex, MergeDirection PreferredDirection)
+	{
+		if (HunkIndex >= m_hunks.size()) {
+			m_selectedHunk = InvalidIndex;
+			return false;
+		}
+
+		m_selectedHunk = HunkIndex;
+		if (CanMergeDirection(HunkIndex, PreferredDirection)) {
+			m_selectedDirection = PreferredDirection;
+			return true;
+		}
+
+		if (CanMergeDirection(HunkIndex, MergeDirection::LeftToRight)) {
+			m_selectedDirection = MergeDirection::LeftToRight;
+			return true;
+		}
+
+		if (CanMergeDirection(HunkIndex, MergeDirection::RightToLeft)) {
+			m_selectedDirection = MergeDirection::RightToLeft;
+			return true;
+		}
+
+		return false;
+	}
+
+	size_t VisibleMergeHunk(MergeDirection PreferredDirection) const
+	{
+		const size_t CurrentHunk = HunkIndexForRow(CurrentDiffRow());
+		if (CurrentHunk != InvalidIndex && VisibleHunkActionScreenIndex(CurrentHunk) != InvalidIndex
+				&& CanMergeHunk(CurrentHunk)) {
+			return CurrentHunk;
+		}
+
+		for (size_t I = 0; I < m_hunks.size(); ++I) {
+			if (VisibleHunkActionScreenIndex(I) != InvalidIndex && CanMergeDirection(I, PreferredDirection))
+				return I;
+		}
+
+		for (size_t I = 0; I < m_hunks.size(); ++I) {
+			if (VisibleHunkActionScreenIndex(I) != InvalidIndex && CanMergeHunk(I))
+				return I;
+		}
+		return InvalidIndex;
+	}
+
+	bool ActivateGutter(MergeDirection PreferredDirection)
+	{
+		const size_t HunkIndex = VisibleMergeHunk(PreferredDirection);
+		if (HunkIndex == InvalidIndex) {
+			m_gutterActive = false;
+			m_selectedHunk = InvalidIndex;
+			return false;
+		}
+
+		m_gutterActive = true;
+		return SelectGutterHunk(HunkIndex, PreferredDirection);
+	}
+
+	void SelectGutterDirection(MergeDirection Direction)
+	{
+		if (m_selectedHunk != InvalidIndex && CanMergeDirection(m_selectedHunk, Direction))
+			m_selectedDirection = Direction;
+	}
+
+	void SyncActiveCursorToSelectedHunk(size_t FallbackScreenIndex)
+	{
+		size_t ScreenIndex = InvalidIndex;
+		if (m_selectedHunk != InvalidIndex && m_selectedHunk < m_hunks.size()) {
+			ScreenIndex = VisibleHunkActionScreenIndex(m_selectedHunk);
+			if (ScreenIndex == InvalidIndex)
+				ScreenIndex = FirstScreenIndexForRow(m_hunks[m_selectedHunk].FirstRow);
+		}
+		SyncActiveCursorToScreenIndex(ScreenIndex != InvalidIndex ? ScreenIndex : FallbackScreenIndex);
+	}
+
+	void MergeCurrentSelection()
+	{
+		FlushPendingDiffRefresh(true);
+		const size_t HunkIndex = m_gutterActive ? m_selectedHunk : HunkIndexForRow(CurrentDiffRow());
+		if (HunkIndex == InvalidIndex || HunkIndex >= m_hunks.size())
+			return;
+
+		const MergeDirection Direction = m_gutterActive ? m_selectedDirection :
+				m_activePane == ActivePane::Left ? MergeDirection::LeftToRight : MergeDirection::RightToLeft;
+		MergeHunk(HunkIndex, Direction);
+	}
+
+	void MergeHunk(size_t HunkIndex, MergeDirection Direction)
+	{
+		if (!CanMergeDirection(HunkIndex, Direction))
+			return;
+
+		const bool GutterWasActive = m_gutterActive;
+		const ActivePane ActivePaneBefore = m_activePane;
+		const int CursorLine = ActiveEditorPane().CursorLine();
+		const int CursorVisualLine = ActiveEditorPane().CursorVisualLine();
+		const int CursorCol = ActiveEditorPane().CursorCol();
+		const LineRange TargetRange = HunkRange(HunkIndex, TargetPane(Direction));
+		std::vector<FARString> NewLines;
+		ExtractHunkLines(HunkIndex, SourcePane(Direction), NewLines);
+
+		DiffEditorPane &Target = Pane(TargetPane(Direction));
+		if (!Target.ReplaceLines(TargetRange.Begin, TargetRange.End - TargetRange.Begin, NewLines)) {
+			Message(MSG_WARNING | MSG_ERRORTYPE, 1, L"Compare files", L"Cannot merge hunk.",
+					Target.Path().CPtr(), Msg::Ok);
+			return;
+		}
+
+		const size_t NextHunkHint = HunkIndex;
+		m_leftPane.RefreshLinesFromEditor();
+		m_rightPane.RefreshLinesFromEditor();
+		m_pendingDiffRefresh = false;
+		RebuildDiffModel();
+
+		if (GutterWasActive) {
+			if (!m_hunks.empty()) {
+				m_gutterActive = true;
+				SelectGutterHunk(std::min(NextHunkHint, m_hunks.size() - 1), Direction);
+				EnsureSelectedHunkVisible();
+			} else {
+				m_gutterActive = false;
+				m_selectedHunk = InvalidIndex;
+				m_activePane = TargetPane(Direction);
+				EnsureActiveCursorVisible();
+			}
+		} else {
+			m_gutterActive = false;
+			m_activePane = ActivePaneBefore;
+			SyncActiveCursorByLine(CursorLine, CursorVisualLine, CursorCol);
+		}
+
+		UpdateActivePane();
+		Show();
+	}
+
+	void RebuildDiffModel()
+	{
+		m_rows = BuildLineDiff(m_leftPane.Lines(), m_rightPane.Lines());
+		BuildDiffHunks();
+		BuildInlineDiffs();
+		RebuildScreenRows();
+	}
+
+	void ScheduleDiffRefresh()
+	{
+		m_pendingDiffRefresh = true;
+		m_lastEditTick = WINPORT(GetTickCount)();
+	}
+
+	bool FlushPendingDiffRefresh(bool Force)
+	{
+		if (!m_pendingDiffRefresh)
+			return false;
+
+		if (!Force && WINPORT(GetTickCount)() - m_lastEditTick < DiffRefreshDelay)
+			return false;
+
+		const int CursorLine = ActiveEditorPane().CursorLine();
+		const int CursorVisualLine = ActiveEditorPane().CursorVisualLine();
+		const int CursorCol = ActiveEditorPane().CursorCol();
+		const bool LeftChanged = m_leftPane.RefreshLinesFromEditor();
+		const bool RightChanged = m_rightPane.RefreshLinesFromEditor();
+		m_pendingDiffRefresh = false;
+		if (!LeftChanged && !RightChanged)
+			return false;
+
+		RebuildDiffModel();
+		SyncActiveCursorByLine(CursorLine, CursorVisualLine, CursorCol);
+		EnsureActiveCursorVisible();
+		return true;
+	}
+
+	void RebuildDiffFromEditors()
+	{
+		const int CursorLine = ActiveEditorPane().CursorLine();
+		const int CursorVisualLine = ActiveEditorPane().CursorVisualLine();
+		const int CursorCol = ActiveEditorPane().CursorCol();
+		m_leftPane.RefreshLinesFromEditor();
+		m_rightPane.RefreshLinesFromEditor();
+		m_pendingDiffRefresh = false;
+		RebuildDiffModel();
+		SyncActiveCursorByLine(CursorLine, CursorVisualLine, CursorCol);
+		EnsureActiveCursorVisible();
+	}
+
+	void SaveActivePane()
+	{
+		if (!ActiveEditorPane().Save()) {
+			Message(MSG_WARNING | MSG_ERRORTYPE, 1, L"Compare files", L"Cannot save file.",
+					ActiveEditorPane().Path().CPtr(), Msg::Ok);
+			return;
+		}
+
+		RebuildDiffFromEditors();
+		Show();
+	}
+
+	bool SaveModifiedPanes()
+	{
+		if (m_leftPane.Modified() && !m_leftPane.Save()) {
+			Message(MSG_WARNING | MSG_ERRORTYPE, 1, L"Compare files", L"Cannot save file.",
+					m_leftPane.Path().CPtr(), Msg::Ok);
+			return false;
+		}
+
+		if (m_rightPane.Modified() && !m_rightPane.Save()) {
+			Message(MSG_WARNING | MSG_ERRORTYPE, 1, L"Compare files", L"Cannot save file.",
+					m_rightPane.Path().CPtr(), Msg::Ok);
+			return false;
+		}
+
+		RebuildDiffFromEditors();
+		return true;
+	}
+
+	void Close()
+	{
+		if (!m_leftPane.Modified() && !m_rightPane.Modified()) {
+			FrameManager->DeleteFrame();
+			return;
+		}
+
+		FARString ModifiedFiles;
+		if (m_leftPane.Modified())
+			ModifiedFiles+= m_leftPane.Path();
+		if (m_rightPane.Modified()) {
+			if (!ModifiedFiles.IsEmpty())
+				ModifiedFiles+= L"\n";
+			ModifiedFiles+= m_rightPane.Path();
+		}
+
+		const int Choice = Message(MSG_WARNING, 3, L"Compare files", L"Save changes before closing?",
+				ModifiedFiles.CPtr(), Msg::HYes, Msg::HNo, Msg::HCancel);
+		if (Choice == 0) {
+			if (!SaveModifiedPanes())
+				return;
+		} else if (Choice != 1) {
+			return;
+		}
+
+		FrameManager->DeleteFrame();
 	}
 
 	void SelectPaneForRow(const DiffRow &Row)
@@ -1117,6 +1801,73 @@ private:
 		GetFirstVisiblePositions(LeftLine, LeftVisualLine, RightLine, RightVisualLine);
 		Line = Pane == ActivePane::Left ? LeftLine : RightLine;
 		VisualLine = Pane == ActivePane::Left ? LeftVisualLine : RightVisualLine;
+	}
+
+	bool GutterActionAt(const MOUSE_EVENT_RECORD &MouseEvent, size_t &HunkIndex, MergeDirection &Direction) const
+	{
+		const int X = MouseEvent.dwMousePosition.X;
+		const int Y = MouseEvent.dwMousePosition.Y;
+		if (!MouseInsideGutter(X) || Y < Y1 + 1 || Y > Y2 - 1)
+			return false;
+
+		const size_t ScreenIndex = m_top + static_cast<size_t>(Y - (Y1 + 1));
+		if (ScreenIndex >= m_screenRows.size())
+			return false;
+
+		const ScreenRow &Screen = m_screenRows[ScreenIndex];
+		HunkIndex = HunkIndexForRow(Screen.Row);
+		if (HunkIndex == InvalidIndex || ScreenIndex != VisibleHunkActionScreenIndex(HunkIndex))
+			return false;
+
+		const bool CanRightToLeft = CanMergeDirection(HunkIndex, MergeDirection::RightToLeft);
+		const bool CanLeftToRight = CanMergeDirection(HunkIndex, MergeDirection::LeftToRight);
+		if (m_gutterWidth >= 3) {
+			if (X == GutterX1() && CanRightToLeft) {
+				Direction = MergeDirection::RightToLeft;
+				return true;
+			}
+			if (X == GutterX2() && CanLeftToRight) {
+				Direction = MergeDirection::LeftToRight;
+				return true;
+			}
+			return false;
+		}
+
+		if (CanLeftToRight != CanRightToLeft) {
+			Direction = CanLeftToRight ? MergeDirection::LeftToRight : MergeDirection::RightToLeft;
+			return true;
+		}
+		return false;
+	}
+
+	bool SelectGutterAction(size_t HunkIndex, MergeDirection Direction)
+	{
+		const bool Changed = !m_gutterActive || m_selectedHunk != HunkIndex || m_selectedDirection != Direction;
+		m_gutterActive = true;
+		m_selectedHunk = HunkIndex;
+		m_selectedDirection = Direction;
+		UpdateActivePane();
+		return Changed;
+	}
+
+	int ProcessGutterMouse(const MOUSE_EVENT_RECORD &MouseEvent)
+	{
+		size_t HunkIndex = InvalidIndex;
+		MergeDirection Direction = MergeDirection::LeftToRight;
+		if (!GutterActionAt(MouseEvent, HunkIndex, Direction))
+			return TRUE;
+
+		const bool Changed = SelectGutterAction(HunkIndex, Direction);
+		const bool Click = (MouseEvent.dwButtonState & FROM_LEFT_1ST_BUTTON_PRESSED)
+				&& MouseEvent.dwEventFlags != MOUSE_MOVED;
+		if (Click) {
+			MergeCurrentSelection();
+			return TRUE;
+		}
+
+		if (Changed)
+			Show();
+		return TRUE;
 	}
 
 	bool ProcessPaneMouse(const MOUSE_EVENT_RECORD &MouseEvent)
@@ -1163,6 +1914,38 @@ private:
 			m_top = Candidate;
 		else if (Page != 0 && Candidate >= m_top + Page)
 			m_top = Candidate - Page + 1;
+		m_top = std::min(m_top, MaxTop());
+	}
+
+	void EnsureSelectedHunkVisible()
+	{
+		if (m_selectedHunk == InvalidIndex || m_selectedHunk >= m_hunks.size())
+			return;
+
+		size_t Candidate = VisibleHunkActionScreenIndex(m_selectedHunk);
+		if (Candidate == InvalidIndex)
+			Candidate = FirstScreenIndexForRow(m_hunks[m_selectedHunk].FirstRow);
+		if (Candidate == InvalidIndex)
+			return;
+
+		const size_t Page = VisibleRows();
+		if (Candidate < m_top)
+			m_top = Candidate;
+		else if (Page != 0 && Candidate >= m_top + Page)
+			m_top = Candidate - Page + 1;
+		m_top = std::min(m_top, MaxTop());
+	}
+
+	void PlaceActiveCursorForSearch()
+	{
+		const size_t Candidate = ActiveCursorScreenIndex();
+		const size_t Page = VisibleRows();
+
+		if (Candidate == InvalidIndex || Page == 0)
+			return;
+
+		const size_t FromTop = Page / 4;
+		m_top = Candidate > FromTop ? Candidate - FromTop : 0;
 		m_top = std::min(m_top, MaxTop());
 	}
 
@@ -1214,6 +1997,34 @@ private:
 		EnsureActiveCursorVisible();
 	}
 
+	void SyncActiveCursorByLine(int CursorLine, int CursorVisualLine, int CursorCol)
+	{
+		size_t Candidate = InvalidIndex;
+		size_t CandidatePart = 0;
+		for (size_t I = 0; I < m_screenRows.size(); ++I) {
+			const ScreenRow &Screen = m_screenRows[I];
+			const DiffRow &Row = m_rows[Screen.Row];
+			const int Line = m_activePane == ActivePane::Left ? Row.Left : Row.Right;
+			if (Line != CursorLine)
+				continue;
+
+			if (static_cast<int>(Screen.Part) == CursorVisualLine) {
+				Candidate = I;
+				CandidatePart = Screen.Part;
+				break;
+			}
+			if (Candidate == InvalidIndex) {
+				Candidate = I;
+				CandidatePart = Screen.Part;
+			}
+		}
+
+		if (Candidate != InvalidIndex) {
+			ActiveEditorPane().SetCursorByVisualLine(CursorLine, static_cast<int>(CandidatePart), CursorCol);
+			EnsureActiveCursorVisible();
+		}
+	}
+
 	size_t ActiveCursorScreenIndex() const
 	{
 		const int CursorLine = ActiveEditorPane().CursorLine();
@@ -1249,6 +2060,13 @@ private:
 
 	void UpdateCursorVisibilityForViewport()
 	{
+		if (m_gutterActive) {
+			m_leftPane.SetActive(false);
+			m_rightPane.SetActive(false);
+			SetCursorType(FALSE, 0);
+			return;
+		}
+
 		const bool Visible = ActiveCursorVisible();
 		m_leftPane.SetActive(Visible && m_activePane == ActivePane::Left);
 		m_rightPane.SetActive(Visible && m_activePane == ActivePane::Right);
@@ -1321,6 +2139,9 @@ private:
 
 	size_t CurrentDiffRow() const
 	{
+		if (m_gutterActive && m_selectedHunk != InvalidIndex && m_selectedHunk < m_hunks.size())
+			return m_hunks[m_selectedHunk].FirstRow;
+
 		const size_t CursorIndex = ActiveCursorScreenIndex();
 		if (CursorIndex != InvalidIndex && CursorIndex < m_screenRows.size())
 			return m_screenRows[CursorIndex].Row;
@@ -1414,10 +2235,15 @@ private:
 			HunkStatus.Format(L"Hunks: %u", static_cast<unsigned>(m_hunks.size()));
 		}
 
-		FARString Help = L"Esc/F10 Close  Ctrl+Shift+Up/Down Diff  Tab Switch pane";
+		FARString Help = L"F2 Save  F5 Merge  Enter Gutter merge  Ctrl+Shift+Up/Down Diff  Tab Focus";
 
+		const wchar_t *ActiveName = m_gutterActive ? L"gutter" :
+				m_activePane == ActivePane::Left ? L"left" : L"right";
 		FormatString Info;
-		Info << L"Active: " << (m_activePane == ActivePane::Left ? L"left" : L"right") << L"  " << HunkStatus
+		Info << L"Active: " << ActiveName << (!m_gutterActive && ActiveEditorPane().Modified() ? L"*" : L"")
+				<< L"  " << HunkStatus
+				<< L"  Modified: " << (m_leftPane.Modified() ? L"L" : L"-")
+				<< (m_rightPane.Modified() ? L"R" : L"-")
 				<< L"  Lines: " << static_cast<UINT64>(m_leftPane.Lines().size()) << L'/'
 				<< static_cast<UINT64>(m_rightPane.Lines().size())
 				<< L"  Diff rows: " << static_cast<UINT64>(m_rows.size());
@@ -1457,25 +2283,22 @@ private:
 		if (m_gutterWidth >= 3) {
 			wchar_t Gutter[] = {L' ', BoxSymbols[BS_V1], L' '};
 			const ScreenRow &Screen = m_screenRows[ScreenIndex];
-			const bool DrawAction = ScreenIndex == VisibleHunkActionScreenIndex(HunkIndexForRow(Screen.Row));
+			const size_t HunkIndex = HunkIndexForRow(Screen.Row);
+			const bool DrawAction = ScreenIndex == VisibleHunkActionScreenIndex(HunkIndex);
 			if (DrawAction) {
-				switch (Kind) {
-					case DiffKind::Deleted:
-						Gutter[2] = L'\x25B8';
-						break;
-					case DiffKind::Added:
-						Gutter[0] = L'\x25C2';
-						break;
-					case DiffKind::Changed:
-						Gutter[0] = L'\x25C2';
-						Gutter[2] = L'\x25B8';
-						break;
-					case DiffKind::Equal:
-					default:
-						break;
-				}
+				if (CanMergeDirection(HunkIndex, MergeDirection::RightToLeft))
+					Gutter[0] = L'\x25C2';
+				if (CanMergeDirection(HunkIndex, MergeDirection::LeftToRight))
+					Gutter[2] = L'\x25B8';
 			}
 			Text(GutterX1(), Y, Color, Gutter, ARRAYSIZE(Gutter));
+			ApplyDiffOverlay(GutterX1(), Y, m_gutterWidth, Kind);
+			if (m_gutterActive && HunkIndex == m_selectedHunk
+					&& CanMergeDirection(HunkIndex, m_selectedDirection)) {
+				const int Offset = m_selectedDirection == MergeDirection::RightToLeft ? 0 : 2;
+				Text(GutterX1() + Offset, Y, FarColorToReal(COL_EDITORSELECTEDTEXT), &Gutter[Offset], 1);
+			}
+			return;
 		} else {
 			Text(GutterX1(), Y, Color, &BoxSymbols[BS_V1], 1);
 		}

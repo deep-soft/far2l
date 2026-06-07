@@ -6189,6 +6189,13 @@ BOOL Editor::IsFileModified() const
 	return Flags.Check(FEDITOR_MODIFIED);
 }
 
+void Editor::MarkSaved()
+{
+	UndoSavePos = UndoPos;
+	Flags.Clear(FEDITOR_UNDOSAVEPOSLOST);
+	TextChanged(0);
+}
+
 // используется в FileEditor
 long Editor::GetCurPos()
 {
@@ -8549,7 +8556,16 @@ int Editor::GetClearFlag()
 
 int Editor::GetCurCol()
 {
-	return CurLine->GetCurPos();
+	if (!CurLine)
+		return 0;
+
+	if (!m_bWordWrap)
+		return CurLine->GetCellCurPos();
+
+	int VisualLineStart = 0;
+	int VisualLineEnd = 0;
+	CurLine->GetVisualLine(GetCurVisualLine(), VisualLineStart, VisualLineEnd);
+	return CurLine->RealPosToCell(0, VisualLineStart, CurLine->GetCurPos(), nullptr);
 }
 
 void Editor::SetCurPos(int NewCol, int NewRow)
