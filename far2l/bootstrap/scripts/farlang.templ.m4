@@ -16652,15 +16652,15 @@ MenuCompareFolders
 "Пара&ўнанне каталогаў"
 
 MenuCompareFiles
-"Сравнение фа&йлов         Ctrl+Alt+C"
-"File &diff           Ctrl+Alt+C"
-"Porovnat &soubory               Ctrl+Alt+C"
-"D&ateien vergleichen  Ctrl+Alt+C"
-"Fájl &diff           Ctrl+Alt+C"
-"P&orównaj pliki            Ctrl+Alt+C"
-"C&omparar archivos     Ctrl+Alt+C"
-"Порівняння фа&йлів         Ctrl+Alt+C"
-"Параўнанне фа&йлаў         Ctrl+Alt+C"
+"Сравнение фа&йлов         Ctrl+D"
+"File &diff           Ctrl+D"
+"Porovnat &soubory               Ctrl+D"
+"D&ateien vergleichen  Ctrl+D"
+"Fájl &diff           Ctrl+D"
+"P&orównaj pliki            Ctrl+D"
+"C&omparar archivos     Ctrl+D"
+"Порівняння фа&йлів         Ctrl+D"
+"Параўнанне фа&йлаў         Ctrl+D"
 
 MenuUserMenu
 "Меню пользовател&я"
