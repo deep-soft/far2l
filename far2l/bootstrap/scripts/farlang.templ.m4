@@ -16652,15 +16652,15 @@ MenuCompareFolders
 "Пара&ўнанне каталогаў"
 
 MenuCompareFiles
-"Сравнение &файлов   Ctrl+Shift+C"
-"Compare &files Ctrl+Shift+C"
-"Po&rovnat soubory"
-"Dateien verglei&chen"
-"Fájlok össze&hasonlítása"
-"Porówna&j pliki      Ctrl+Shift+C"
-"&Comparar archivos Ctrl+Shift+C"
-"Порівняння &файлів   Ctrl+Shift+C"
-"Параўнанне &файлаў   Ctrl+Shift+C"
+"Сравнение фа&йлов         Alt+D"
+"File &diff           Alt+D"
+"Porovnat &soubory               Alt+D"
+"D&ateien vergleichen  Alt+D"
+"Fájl &diff           Alt+D"
+"P&orównaj pliki            Alt+D"
+"C&omparar archivos     Alt+D"
+"Порівняння фа&йлів         Alt+D"
+"Параўнанне фа&йлаў         Alt+D"
 
 MenuUserMenu
 "Меню пользовател&я"
@@ -16686,7 +16686,7 @@ MenuFileAssociations
 
 MenuBookmarks
 "Зак&ладки на папки"
-"Fol&der bookmarks"
+"Folder boo&kmarks"
 "A&dresářové zkratky"
 "Or&dnerschnellzugriff"
 "Mappa gyorsbillent&yűk"
