@@ -1743,6 +1743,13 @@ private:
 
 	void SaveActivePane()
 	{
+		FARString SaveFile = m_activePane == ActivePane::Left ? L"Left file: " : L"Right file: ";
+		SaveFile+= ActiveEditorPane().Path();
+		const int Choice = Message(MSG_WARNING, 2, L"Compare files", L"Save file?",
+				SaveFile.CPtr(), Msg::HYes, Msg::HNo);
+		if (Choice != 0)
+			return;
+
 		if (!ActiveEditorPane().Save()) {
 			Message(MSG_WARNING | MSG_ERRORTYPE, 1, L"Compare files", L"Cannot save file.",
 					ActiveEditorPane().Path().CPtr(), Msg::Ok);
@@ -1778,17 +1785,21 @@ private:
 			return;
 		}
 
-		FARString ModifiedFiles;
-		if (m_leftPane.Modified())
-			ModifiedFiles+= m_leftPane.Path();
+		FARString LeftModified, RightModified;
+		Messager MessageBuilder(L"Compare files");
+		MessageBuilder.Add(L"Save changed files before closing?");
+		if (m_leftPane.Modified()) {
+			LeftModified = L"Left file: ";
+			LeftModified+= m_leftPane.Path();
+			MessageBuilder.Add(LeftModified.CPtr());
+		}
 		if (m_rightPane.Modified()) {
-			if (!ModifiedFiles.IsEmpty())
-				ModifiedFiles+= L"\n";
-			ModifiedFiles+= m_rightPane.Path();
+			RightModified = L"Right file: ";
+			RightModified+= m_rightPane.Path();
+			MessageBuilder.Add(RightModified.CPtr());
 		}
 
-		const int Choice = Message(MSG_WARNING, 3, L"Compare files", L"Save changes before closing?",
-				ModifiedFiles.CPtr(), Msg::HYes, Msg::HNo, Msg::HCancel);
+		const int Choice = MessageBuilder.Add(Msg::HYes, Msg::HNo, Msg::HCancel).Show(MSG_WARNING, 3);
 		if (Choice == 0) {
 			if (!SaveModifiedPanes())
 				return;
@@ -2239,9 +2250,9 @@ private:
 	void DrawHeader()
 	{
 		SetScreen(X1, Y1, X2, Y1, L' ', FarColorToReal(COL_VIEWERSTATUS));
-		DrawHeaderSide(X1, m_leftWidth, m_leftPath);
+		DrawHeaderSide(X1, m_leftWidth, m_leftPath + (m_leftPane.Modified() ? L"*" : L""));
 		DrawGutterHeader();
-		DrawHeaderSide(RightPaneX1(), m_rightWidth, m_rightPath);
+		DrawHeaderSide(RightPaneX1(), m_rightWidth, m_rightPath + (m_rightPane.Modified() ? L"*" : L""));
 	}
 
 	void DrawHeaderSide(int X, int Width, FARString Path)
