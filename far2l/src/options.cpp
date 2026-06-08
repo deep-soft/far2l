@@ -271,7 +271,7 @@ void ShellOptions(int LastCommand, MOUSE_EVENT_RECORD *MouseEvent)
 		{ Opt.PanelsDisposition ? Msg::MenuVerticalPanels : Msg::MenuHorizontalPanels, 0,(KEY_CTRL + KEY_COMMA) },
 		{Msg::MenuTogglePanels,     0,             KEY_CTRLO },
 		{Msg::MenuCompareFolders,   0,             0         },
-		{Msg::MenuCompareFiles,     0,             KEY_ALTD},
+		{Msg::MenuCompareFiles,     0,             KEY_CTRLALTC},
 		{L"",                       LIF_SEPARATOR, 0         },
 		{Msg::MenuUserMenu,         0,             0         },
 		{Msg::MenuFileAssociations, 0,             0         },
