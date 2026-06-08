@@ -3,9 +3,10 @@
 #include "filediff.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
-#include <map>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "config.hpp"
@@ -53,6 +54,8 @@ struct DiffHunk
 };
 
 constexpr size_t InvalidIndex = std::numeric_limits<size_t>::max();
+constexpr size_t MaxStoredHistogramPositions = 64;
+constexpr size_t MaxUsefulHistogramFrequency = 64;
 
 struct ScreenRow
 {
@@ -310,10 +313,10 @@ bool ResolvePanelFile(Panel *Source, FARString &Path)
 
 std::vector<DiffRow> CoalesceChanges(std::vector<DiffRow> Rows)
 {
-	std::vector<DiffRow> Result;
+	size_t Write = 0;
 	for (size_t I = 0; I < Rows.size();) {
 		if (Rows[I].Kind != DiffKind::Deleted) {
-			Result.emplace_back(Rows[I++]);
+			Rows[Write++] = Rows[I++];
 			continue;
 		}
 
@@ -329,15 +332,16 @@ std::vector<DiffRow> CoalesceChanges(std::vector<DiffRow> Rows)
 		const size_t AddedCount = K - J;
 		const size_t ChangedCount = std::min(DeletedCount, AddedCount);
 		for (size_t N = 0; N < ChangedCount; ++N)
-			Result.push_back({Rows[I + N].Left, Rows[J + N].Right, DiffKind::Changed});
+			Rows[Write++] = {Rows[I + N].Left, Rows[J + N].Right, DiffKind::Changed};
 		for (size_t N = ChangedCount; N < DeletedCount; ++N)
-			Result.emplace_back(Rows[I + N]);
+			Rows[Write++] = Rows[I + N];
 		for (size_t N = ChangedCount; N < AddedCount; ++N)
-			Result.emplace_back(Rows[J + N]);
+			Rows[Write++] = Rows[J + N];
 
 		I = K;
 	}
-	return Result;
+	Rows.resize(Write);
+	return Rows;
 }
 
 void EmitFallbackRange(const std::vector<FARString> &Left, const std::vector<FARString> &Right,
@@ -358,7 +362,27 @@ void EmitFallbackRange(const std::vector<FARString> &Left, const std::vector<FAR
 struct HistogramEntry
 {
 	size_t Count = 0;
-	std::vector<size_t> Positions;
+	size_t FirstPosition = InvalidIndex;
+	std::vector<size_t> MorePositions;
+
+	void AddPosition(size_t Position)
+	{
+		++Count;
+		if (FirstPosition == InvalidIndex)
+			FirstPosition = Position;
+		else if (MorePositions.size() + 1 < MaxStoredHistogramPositions)
+			MorePositions.emplace_back(Position);
+	}
+
+	size_t StoredPositionCount() const
+	{
+		return FirstPosition == InvalidIndex ? 0 : MorePositions.size() + 1;
+	}
+
+	size_t StoredPosition(size_t Index) const
+	{
+		return Index == 0 ? FirstPosition : MorePositions[Index - 1];
+	}
 };
 
 struct DiffAnchor
@@ -371,38 +395,54 @@ struct DiffAnchor
 	bool Valid() const { return Length != 0; }
 };
 
+uint64_t HashLine(const FARString &Line)
+{
+	constexpr uint64_t Offset = 1469598103934665603ull;
+	constexpr uint64_t Prime = 1099511628211ull;
+
+	uint64_t Hash = Offset;
+	const wchar_t *Data = Line.CPtr();
+	for (size_t I = 0, End = Line.GetLength(); I < End; ++I) {
+		Hash^= static_cast<uint64_t>(static_cast<uint32_t>(Data[I]));
+		Hash*= Prime;
+	}
+	return Hash;
+}
+
 DiffAnchor FindHistogramAnchor(const std::vector<FARString> &Left, const std::vector<FARString> &Right,
 		size_t LeftBegin, size_t LeftEnd, size_t RightBegin, size_t RightEnd)
 {
-	constexpr size_t MaxStoredPositions = 64;
-	constexpr size_t MaxUsefulFrequency = 64;
-
-	std::map<FARString, size_t> LeftCounts;
+	std::unordered_map<uint64_t, size_t> LeftCounts;
+	LeftCounts.reserve(LeftEnd - LeftBegin);
 	for (size_t I = LeftBegin; I < LeftEnd; ++I)
-		++LeftCounts[Left[I]];
+		++LeftCounts[HashLine(Left[I])];
 
-	std::map<FARString, HistogramEntry> RightHistogram;
+	std::unordered_map<uint64_t, HistogramEntry> RightHistogram;
+	RightHistogram.reserve(RightEnd - RightBegin);
 	for (size_t I = RightBegin; I < RightEnd; ++I) {
-		HistogramEntry &Entry = RightHistogram[Right[I]];
-		++Entry.Count;
-		if (Entry.Positions.size() < MaxStoredPositions)
-			Entry.Positions.emplace_back(I);
+		HistogramEntry &Entry = RightHistogram[HashLine(Right[I])];
+		Entry.AddPosition(I);
 	}
 
 	DiffAnchor Best;
-	Best.Frequency = static_cast<size_t>(-1);
+	Best.Frequency = InvalidIndex;
 
 	for (size_t LeftPos = LeftBegin; LeftPos < LeftEnd; ++LeftPos) {
-		const auto LeftCount = LeftCounts.find(Left[LeftPos]);
-		const auto RightEntry = RightHistogram.find(Left[LeftPos]);
+		const uint64_t Hash = HashLine(Left[LeftPos]);
+		const auto LeftCount = LeftCounts.find(Hash);
+		const auto RightEntry = RightHistogram.find(Hash);
 		if (LeftCount == LeftCounts.end() || RightEntry == RightHistogram.end())
 			continue;
 
 		const size_t Frequency = LeftCount->second + RightEntry->second.Count;
-		if (Frequency > MaxUsefulFrequency || Frequency > Best.Frequency)
+		if (Frequency > MaxUsefulHistogramFrequency || Frequency > Best.Frequency)
 			continue;
 
-		for (const size_t RightPos : RightEntry->second.Positions) {
+		for (size_t PositionIndex = 0; PositionIndex < RightEntry->second.StoredPositionCount(); ++PositionIndex) {
+			const size_t RightPos = RightEntry->second.StoredPosition(PositionIndex);
+			if (Left[LeftPos] != Right[RightPos])
+				continue;
+
 			size_t LB = LeftPos;
 			size_t RB = RightPos;
 			while (LB > LeftBegin && RB > RightBegin && Left[LB - 1] == Right[RB - 1]) {
@@ -755,10 +795,9 @@ public:
 		m_y1 = Y1;
 		m_x2 = X2;
 		m_y2 = Y2;
-		if (m_editor) {
+		if (m_editor && Changed) {
 			m_editor->SetPosition(X1, Y1, X2, Y2);
-			if (Changed)
-				UpdateColorer();
+			UpdateColorer();
 		}
 	}
 
@@ -1083,7 +1122,7 @@ class FileDiffFrame : public Frame
 	DiffEditorPane m_rightPane;
 	std::vector<DiffRow> m_rows;
 	std::vector<DiffHunk> m_hunks;
-	std::vector<InlineDiff> m_inlineDiffs;
+	std::vector<std::unique_ptr<InlineDiff>> m_inlineDiffs;
 	std::vector<ScreenRow> m_screenRows;
 	size_t m_top = 0;
 	int m_leftWidth = 0;
@@ -1656,7 +1695,7 @@ private:
 	{
 		m_rows = BuildLineDiff(m_leftPane.Lines(), m_rightPane.Lines());
 		BuildDiffHunks();
-		BuildInlineDiffs();
+		ResetInlineDiffs();
 		RebuildScreenRows();
 	}
 
@@ -2113,19 +2152,30 @@ private:
 		}
 	}
 
-	void BuildInlineDiffs()
+	void ResetInlineDiffs()
 	{
 		m_inlineDiffs.clear();
 		m_inlineDiffs.resize(m_rows.size());
+	}
 
-		for (size_t I = 0; I < m_rows.size(); ++I) {
-			const DiffRow &Row = m_rows[I];
-			if (Row.Kind != DiffKind::Changed || Row.Left < 0 || Row.Right < 0)
-				continue;
+	const InlineDiff &InlineDiffForRow(size_t RowIndex)
+	{
+		static const InlineDiff Empty;
+		if (RowIndex >= m_rows.size() || RowIndex >= m_inlineDiffs.size())
+			return Empty;
 
+		const DiffRow &Row = m_rows[RowIndex];
+		if (Row.Kind != DiffKind::Changed || Row.Left < 0 || Row.Right < 0)
+			return Empty;
+
+		std::unique_ptr<InlineDiff> &Inline = m_inlineDiffs[RowIndex];
+		if (!Inline) {
+			Inline.reset(new InlineDiff);
 			BuildInlineDiffRanges(m_leftPane.Lines()[Row.Left], m_rightPane.Lines()[Row.Right],
-					m_inlineDiffs[I].Left, m_inlineDiffs[I].Right);
+					Inline->Left, Inline->Right);
 		}
+
+		return *Inline;
 	}
 
 	size_t FirstScreenIndexForRow(size_t Row) const
@@ -2323,7 +2373,7 @@ private:
 
 			const ScreenRow &Screen = m_screenRows[ScreenIndex];
 			const DiffRow &Row = m_rows[Screen.Row];
-			const InlineDiff &Inline = m_inlineDiffs[Screen.Row];
+			const InlineDiff &Inline = InlineDiffForRow(Screen.Row);
 			DrawPane(X1, Y, m_leftWidth, m_leftPane, Row.Left, Row.Kind, Screen.Part,
 					Inline.Left, DiffKind::Deleted);
 			DrawGutter(Y, ScreenIndex, Row.Kind);
