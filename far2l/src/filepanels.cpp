@@ -693,7 +693,7 @@ int FilePanels::ProcessKey(FarKey Key)
 			FindFiles::Present();
 			break;
 		}
-		case KEY_CTRLD: {
+		case KEY_CTRLSHIFD: {
 			PresentFileDiff();
 			break;
 		}
