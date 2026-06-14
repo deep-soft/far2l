@@ -1,4 +1,4 @@
-# 2026-05-01 01:10
+# 2026-06-14 8:30
 # act-release-lin-mac.yml
 name: act-Release -Lin-Mac
 
@@ -44,6 +44,10 @@ on:
       DEBUG_MODE_2:
         description: DEBUG_MODE_2
         default: "N"
+        required: true
+      TAG_NAME:
+        description: TAG_NAME
+        default: "far2l"
         required: true
 
 env:
@@ -430,7 +434,7 @@ jobs:
       uses: deep-soft/action-gh-release@v3
       with:
         draft: true
-        tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
+        tag_name: ${{ env.TAG_NAME }}-${{ env.PROG_VERSION }}
         files: |
           ${{ env.ZIP_RELEASE_ARCHIVE }}
           ${{ env.ASSET_SRC }}
@@ -458,7 +462,7 @@ jobs:
       uses: deep-soft/action-gh-release@v3
       with:
         draft: true
-        tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-ALL
+        tag_name: ${{ env.TAG_NAME }}-${{ env.PROG_VERSION }}-ALL
         files: |
           ${{ env.ZIP_RELEASE_ARCHIVE_ALL }}
 
