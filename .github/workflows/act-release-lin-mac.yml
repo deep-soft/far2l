@@ -89,6 +89,21 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Set TAG_NAME
+      shell: bash
+      run: |
+        if [ "${{ inputs.TAG_NAME }}" == "" ]; then
+          tag_name=${{ env.PROG_NAME }}
+        else
+          tag_name=${{ inputs.TAG_NAME }}
+        fi
+        echo "TAG_NAME=$tag_name" >> $GITHUB_ENV;
+
+    - name: Print TAG_NAME
+      shell: bash
+      run: |
+        echo "TAG_NAME=["${{ env.TAG_NAME }}"]";
+
     - name: Get branch name
       id: get-branch-name
       run: |
