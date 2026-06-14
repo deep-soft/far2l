@@ -104,10 +104,10 @@ jobs:
       run: |
         branch_name=${{ steps.get-branch-name.outputs.BRANCH_NAME }};
         echo "Branch name: $branch_name"
-        if [ $branch_name != ${{ env.default_branch }} ]; then
-          PROG_NAME=${{ env.PROG_NAME }}-$branch_name;
-          echo "PROG_NAME=$PROG_NAME" >> $GITHUB_ENV;
-        fi
+#        if [ $branch_name != ${{ env.default_branch }} ]; then
+#          PROG_NAME=${{ env.PROG_NAME }}-$branch_name;
+#          echo "PROG_NAME=$PROG_NAME" >> $GITHUB_ENV;
+#        fi
 
     - name: Print program name
       shell: bash
