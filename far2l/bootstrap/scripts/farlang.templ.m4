@@ -5965,6 +5965,39 @@ SaveSetupAsk2
 "Поточну конфігурацію?"
 "бягучыя налады?"
 
+SaveSetupCommon
+"Общие &настройки"
+"Common &settings"
+"Běžná &nastavení"
+"Allgemeine &Einstellungen"
+"Általános b&eállítások"
+"&Ustawienia wspólne"
+"&Configuración común"
+"Загальні &налаштування"
+"Агульныя &налады"
+
+SaveSetupPanels
+"Состояния &панелей"
+"&Panels state"
+"Stav &panelů"
+"&Panelzustand"
+"&Panelek állapot"
+"Stanu &paneli"
+"Estado de &paneles"
+"Cтану &панелей"
+"Cтану &панэлей"
+
+SaveSetupMacros
+"&Макрокоманды"
+"&Macro"
+"&Makro"
+"&Makro"
+"&Makró"
+"&Makro"
+"&Macro"
+"&Макрокоманди"
+"&Макракаманды"
+
 SaveSetup
 "Сохранить"
 "Save"
@@ -21299,15 +21332,15 @@ LocalMenuTitle
 "Мясцовае меню"
 
 MainMenuBottomTitle
-"Del Ins F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
-"Del Ins F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
-"Del Ins F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
-"Del Ins F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
-"Del Ins F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
-"Del Ins F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
-"Del Ins F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
-"Del Ins F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
-"Del Ins F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
+"Del Ins Ctrl+N F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
+"Del Ins Ctrl+N F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
+"Del Ins Ctrl+N F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
+"Del Ins Ctrl+N F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
+"Del Ins Ctrl+N F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
+"Del Ins Ctrl+N F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
+"Del Ins Ctrl+N F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
+"Del Ins Ctrl+N F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
+"Del Ins Ctrl+N F4 Ctrl+F4 Ctrl+Up/Down Ctrl+Alt+F"
 
 AskDeleteMenuItem
 "Вы хотите удалить пункт меню"
