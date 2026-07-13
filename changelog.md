@@ -7,6 +7,7 @@ or via `git log --no-merges --pretty=format:"%as: %B"`).
 ## Master (current development)
 * _New:_ GUI|SDL Backend (experimental now; not compiled by default, set flag `-DUSESDL=YES` explicitly to compile both GUI|WX and GUI|SDL backends together or `-DUSESDL=YES -DUSEWX=NO` to compile only GUI|SDL; command line parameter `--SDL` to force run GUI|SDL backend)
 * _New:_ Added a new option "Auto save panels state" (in "System settings") and details choice in manual config saving (via **Shift+F9**)
+* _New:_ Added a new option "Show startup banner in built-in terminal"
 * Themes: added "Hercules Night", fixes to "Gold on Blue", fixes to "DOS Navigator"
 * **Alt+Ins**: now copies to clipboard also colored HTML; selects whole screen by **A** or **Ctrl+A** key press; deselect by **U** or **Ctrl+U** key press
 * _New_: `--nodetect=e` command line parameter to prevent emoji VS16 suffix detection
@@ -19,7 +20,7 @@ or via `git log --no-merges --pretty=format:"%as: %B"`).
 * _ADB plugin_: New panel plugin for accessing Android devices in developer mode, both shell commands and file system; see [adb/README.md](https://github.com/elfmz/far2l/blob/master/adb/README.md))
 * _edsort plugin_: Support unique row sorting and preserve dialog values
 * _GitGutter plugin_: New plugin in editor (**F11**->GitGutter) to show Git changes directly in the far2l editor gutter; click gutter marks or press **Ctrl+G** to open the nearest hunk at or below the current editor line
-* _OpenWith plugin_: Update to v1.2. Allow plugin invocation on `..` (treated as the current directory). New options: show Snap/Flatpak markers in app menu, ignore `[Removed Associations]` section, query system defaults via `xdg-mime`, and display filename in menu title. Add `GoTo .desktop`, `GoTo TryExec` and `GoTo source` buttons in `Details` dialog. Bugfixes, help updates.
+* _OpenWith plugin_: Update to v1.3. **General**: Added a progress dialog allowing cancellation of application discovery; allow plugin invocation on `..` (treated as the current directory); new option "Display filename in the menu title"; bugfixes and help updates. **Linux/BSD**: new options "Show package qualifiers", "Ignore [Removed Associations] section", "Query system defaults via xdg-mime"; new buttons "GoTo .desktop", "GoTo TryExec", and "GoTo source" in the "Details" dialog. **macOS**: more comprehensive information in the "Details" dialog; new "GoTo bundle location" button in the "Details" dialog; new options "Show UTI instead of MIME types", "Respect system ranking", "Disable ranking and sort alphabetically".
 * _python plugin_: plugin manager (upluginmanager.py), fixes and new subplugins uimgimage.py, uimgpdf.py, ustealer.py (see: [#3346](https://github.com/elfmz/far2l/issues/3346) and [#3439](https://github.com/elfmz/far2l/pull/3439))
 * Several bugfixes and improvements
 

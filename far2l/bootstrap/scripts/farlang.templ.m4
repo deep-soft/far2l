@@ -3468,6 +3468,17 @@ upd:"Use shell"
 "Використовувати &шелл"
 "Ужываць &shell"
 
+ConfigShowStartupBanner
+"Показывать стартовый баннер во встроенном терминале"
+"Show startup banner in built-in terminal"
+upd:"Show startup banner in built-in terminal"
+upd:"Show startup banner in built-in terminal"
+upd:"Show startup banner in built-in terminal"
+upd:"Show startup banner in built-in terminal"
+upd:"Show startup banner in built-in terminal"
+upd:"Show startup banner in built-in terminal"
+upd:"Show startup banner in built-in terminal"
+
 ConfigCmdlineUsePromptFormat
 "Установить &формат командной строки"
 "Set &command line prompt format"
@@ -16684,6 +16695,17 @@ MenuCompareFolders
 "&Порівняння тек"
 "Пара&ўнанне каталогаў"
 
+MenuCompareFiles
+"Сравнение фа&йлов         Ctrl+D"
+"File &diff           Ctrl+D"
+"Porovnat &soubory               Ctrl+D"
+"D&ateien vergleichen  Ctrl+D"
+"Fájl &diff           Ctrl+D"
+"P&orównaj pliki            Ctrl+D"
+"C&omparar archivos     Ctrl+D"
+"Порівняння фа&йлів         Ctrl+D"
+"Параўнанне фа&йлаў         Ctrl+D"
+
 MenuUserMenu
 "Меню пользовател&я"
 "Edit user &menu"
@@ -16708,7 +16730,7 @@ MenuFileAssociations
 
 MenuBookmarks
 "Зак&ладки на папки"
-"Fol&der bookmarks"
+"Folder boo&kmarks"
 "A&dresářové zkratky"
 "Or&dnerschnellzugriff"
 "Mappa gyorsbillent&yűk"

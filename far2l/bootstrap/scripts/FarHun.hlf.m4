@@ -2444,6 +2444,8 @@ shell does not meet far2l's internal requirements, #bash# will be used as a fall
   Be aware that, currently, full support is available only for #bash#, and working with other
 command shells may have significant limitations or errors.
 
+  #Show startup banner in built-in terminal#
+  Display a text block containing the far2l version, copyright notices, and keyboard tips under the panels at launch.
 
 @InfoPanelSettings
 $ #Information Panel settings#

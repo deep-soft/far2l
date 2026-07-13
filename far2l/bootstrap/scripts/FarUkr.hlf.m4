@@ -2709,6 +2709,8 @@ $ #Налаштування командного рядка#
  Зверніть увагу, що на даний момент повноцінна підтримка забезпечена тільки для #bash#,
 а робота з іншими командними оболонками може мати значні обмеження або помилки.
 
+ #Show startup banner in built-in terminal#
+ Display a text block containing the far2l version, copyright notices, and keyboard tips under the panels at launch.
 
 @AutoCompleteSettings
 $ #Налаштування автозавершення та історії#
