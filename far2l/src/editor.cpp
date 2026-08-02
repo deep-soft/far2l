@@ -221,6 +221,9 @@ Editor::Editor(ScreenObject *pOwner, bool DialogUsed)
 	LastSearchRegexp(Opt.EdOpt.SearchRegexp),
 	m_WordWrapPreferredCellPos(0),
 	m_codepage(CP_OEMCP),
+	m_Color(FarColorToReal(COL_EDITORTEXT)),
+	m_SelColor(FarColorToReal(COL_EDITORSELECTEDTEXT)),
+	m_ColorUnChanged(FarColorToReal(COL_DIALOGEDITUNCHANGED)),
 	StartLine(-1),
 	StartChar(-1),
 	StackPos(0),
@@ -4091,14 +4094,13 @@ bool Editor::RenderVisualLine(int LineNumber, int VisualLine, int DrawX1, int Dr
 	CurLogicalLine->GetVisualLine(VisualLine, VisualLineStart, VisualLineEnd);
 
 	Edit ShowString(this, nullptr, false);
+	ShowString.SetEditorMode(true);
+	ShowString.SetEditorParent(true);
 	ShowString.SetBinaryString(CurLogicalLine->GetStringAddr() + VisualLineStart, VisualLineEnd - VisualLineStart);
 	ShowString.SetCurPos(0);
 	ShowString.SetPosition(TextX1, DrawY, DrawX2, DrawY);
-	ShowString.SetObjectColor(CurLogicalLine->Color, CurLogicalLine->SelColor, CurLogicalLine->ColorUnChanged);
 	ShowString.SetLeftPos(0);
 	ShowString.SetOvertypeMode(Flags.Check(FEDITOR_OVERTYPE));
-	ShowString.SetTabSize(EdOpt.TabSize);
-	ShowString.SetEditorMode(true);
 	ShowString.SetShowWhiteSpace(EdOpt.ShowWhiteSpace);
 
 	int SelStart = -1;
@@ -4190,7 +4192,7 @@ bool Editor::RenderVisualLine(int LineNumber, int VisualLine, int DrawX1, int Dr
 			tail_fill_x = std::max(tail_fill_x, ShowString.X1 + 1);
 		}
 		if (tail_fill_x <= ShowString.X2) {
-			ScrBuf.ApplyColor(tail_fill_x, DrawY, ShowString.X2, DrawY, tail_fill_color, CurLogicalLine->SelColor);
+			ScrBuf.ApplyColor(tail_fill_x, DrawY, ShowString.X2, DrawY, tail_fill_color, m_SelColor);
 		}
 	}
 	if (VisualLine < CurLogicalLine->GetVisualLineCount() - 1) {
@@ -6909,6 +6911,9 @@ int Editor::EditorControl(int Command, void *Param)
 				if (EdOpt.ShowGutterMarks)
 					Info->Options|= EOPT_SHOWGUTTER;
 
+				if (Flags.Check(FEDITOR_DIALOGMEMOEDIT))
+					Info->Options|= EOPT_MEMOEDIT;
+
 				Info->TabSize = EdOpt.TabSize;
 				Info->BookMarkCount = POSCACHE_BOOKMARK_COUNT;
 				Info->CurState = Flags.Check(FEDITOR_LOCKMODE) ? ECSTATE_LOCKED : 0;
@@ -7185,6 +7190,21 @@ int Editor::EditorControl(int Command, void *Param)
 				}
 			}
 			return TRUE;
+		}
+		case ECTL_PROCESSINPUT: {
+			if (Param) {
+				INPUT_RECORD *rec = (INPUT_RECORD *)Param;
+				if (CtrlObject->Plugins.ProcessEditorInput(rec))
+					return TRUE;
+				if (rec->EventType == MOUSE_EVENT)
+					ProcessMouse(&rec->Event.MouseEvent);
+				else {
+					FarKey Key = CalcKeyCode(rec, false);
+					ProcessKey(Key);
+				}
+				return TRUE;
+			}
+			return FALSE;
 		}
 		// должно выполняется в FileEditor::EditorControl()
 		case ECTL_PROCESSKEY: {
@@ -7995,12 +8015,6 @@ void Editor::SetTabSize(int NewSize)
 					на самом деле изменился */
 
 	EdOpt.TabSize = NewSize;
-	Edit *CurPtr = TopList;
-
-	while (CurPtr) {
-		CurPtr->SetTabSize(NewSize);
-		CurPtr = CurPtr->m_next;
-	}
 
 	if (m_bWordWrap)
 		RecalculateAllWordWraps(false);
@@ -8070,15 +8084,9 @@ void Editor::SetConvertTabs(int NewMode)
 	// Меняем режим только в том случае, если он на самом деле изменился
 	{
 		EdOpt.ExpandTabs = NewMode;
-		Edit *CurPtr = TopList;
-
-		while (CurPtr) {
-			CurPtr->SetConvertTabs(NewMode);
-
-			if (NewMode == EXPAND_ALLTABS)
+		if (NewMode == EXPAND_ALLTABS) {
+			for (Edit *CurPtr = TopList; CurPtr; CurPtr = CurPtr->m_next)
 				CurPtr->ExpandTabs();
-
-			CurPtr = CurPtr->m_next;
 		}
 	}
 }
@@ -8265,16 +8273,15 @@ Edit *Editor::CreateString(const wchar_t *lpwszStr, int nLength)
 	Edit *pEdit = new (std::nothrow) Edit(this, nullptr, lpwszStr ? false : true);
 
 	if (pEdit) {
+		pEdit->SetEditorMode(TRUE);
+		pEdit->SetEditorParent(TRUE);
 		pEdit->SetPosition(X1, Y1, X2, Y2);
 		pEdit->SetWordWrap(m_bWordWrap);
 		pEdit->ObjWidth = ObjWidth > 0 ? CalculateTextAreaWidth(ObjWidth, EdOpt.ShowScrollBar) : 0;
 
 		pEdit->m_next = nullptr;
 		pEdit->m_prev = nullptr;
-		pEdit->SetTabSize(EdOpt.TabSize);
 		pEdit->SetPersistentBlocks(EdOpt.PersistentBlocks);
-		pEdit->SetConvertTabs(EdOpt.ExpandTabs);
-		pEdit->SetCodePage(m_codepage);
 
 		if (lpwszStr) {
 			pEdit->SetBinaryString(lpwszStr, nLength);
@@ -8282,9 +8289,6 @@ Edit *Editor::CreateString(const wchar_t *lpwszStr, int nLength)
 
 		pEdit->SetCurPos(0);
 
-		pEdit->SetObjectColor(FarColorToReal(COL_EDITORTEXT), FarColorToReal(COL_EDITORSELECTEDTEXT));
-		pEdit->SetEditorMode(TRUE);
-		pEdit->SetWordDiv(EdOpt.strWordDiv);
 		pEdit->SetShowWhiteSpace(EdOpt.ShowWhiteSpace);
 	}
 
@@ -8493,12 +8497,13 @@ void Editor::GetCacheParams(EditorCacheParams *pp)
 bool Editor::SetCodePage(UINT codepage)
 {
 	if (m_codepage != codepage) {
+		const UINT oldCodepage = m_codepage;
 		m_codepage = codepage;
 		Edit *current = TopList;
 		DWORD Result = 0;
 
 		while (current) {
-			Result|= current->SetCodePage(m_codepage);
+			Result|= current->TranscodeCodePage(oldCodepage, m_codepage);
 			current = current->m_next;
 		}
 
@@ -8583,8 +8588,9 @@ void Editor::GetCursorType(bool &Visible, DWORD &Size)
 
 void Editor::SetObjectColor(uint64_t Color, uint64_t SelColor, uint64_t ColorUnChanged)
 {
-	for (Edit *CurPtr = TopList; CurPtr; CurPtr = CurPtr->m_next)	//???
-		CurPtr->SetObjectColor(Color, SelColor, ColorUnChanged);
+	m_Color = Color;
+	m_SelColor = SelColor;
+	m_ColorUnChanged = ColorUnChanged;
 }
 
 void Editor::DrawScrollbar()
