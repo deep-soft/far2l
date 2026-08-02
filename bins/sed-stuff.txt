@@ -3,14 +3,14 @@
 # 2026.08.02 07:55
 
 #1, bool warnLab
-#S://bool warnLab
-#R:bool warnLab
-#F:utils/src/colorspace.cpp
+S://bool warnLab
+R:bool warnLab
+F:utils/src/colorspace.cpp
 
 #2, bool warnWcag
-#S://bool warnWcag
-#R:bool warnWcag
-#F:utils/src/colorspace.cpp
+S://bool warnWcag
+R:bool warnWcag
+F:utils/src/colorspace.cpp
 
 #9, not needed any more, https://github.com/elfmz/far2l/commit/bbba0d16f2aa74f866c45d34f2fdba53a8a2a571
 #S:ReplaceStrings(strStr, L\"\\r\\n\", L\";\");
