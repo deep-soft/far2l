@@ -38,6 +38,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "farcolors.hpp"
 #include "bitflags.hpp"
 #include "FilesSuggestor.hpp"
+#include "EcoString.hpp"
+#include "EcoVector.hpp"
 #include <memory>
 #include <vector>
 #include <vector>
@@ -62,7 +64,7 @@ enum FLAGS_CLASS_EDITLINE
 	FEDITLINE_PARENT_SINGLELINE = 0x00100000,		// обычная строка ввода в диалоге
 	FEDITLINE_PARENT_MULTILINE  = 0x00200000,		// для будущего Memo-Edit (DI_EDITOR или DIF_MULTILINE)
 	FEDITLINE_PARENT_EDITOR     = 0x00400000,		// "вверху" обычный редактор
-	FEDITLINE_CALLBACKACTIVE    = 0x00800000,
+	FEDITLINE_LOCAL_SETTINGS    = 0x00800000,		// has own instance of settings
 	FEDITLINE_HASSPECIALWIDTHCHARS = 0x01000000,
 	FEDITLINE_WORDWRAP          = 0x02000000,
 	FEDITLINE_EOLTYPE_MASK      = 0x1c000000,
@@ -76,13 +78,6 @@ struct ColorItem
 	DWORD64 Color;
 };
 
-enum SetCPFlags
-{
-	SETCP_NOERROR    = 0x00000000,
-	SETCP_WC2MBERROR = 0x00000001,
-	SETCP_MB2WCERROR = 0x00000002,
-	SETCP_OTHERERROR = 0x10000000,
-};
 /*
 interface ICPEncoder
 {
@@ -125,48 +120,32 @@ class Editor;
 
 bool TranslateInsertKey(FarKey &Key);
 
-class Edit : public ScreenObject
+class Edit;
+
+struct IEditListener
+{
+	virtual void OnEditChanged(Edit *edit) = 0;
+};
+
+
+class Edit : public ThinScreenObject
 {
 	friend class DlgEdit;
 	friend class Editor;
 	friend class CommandLine;
 	friend class EditControl;
-
-public:
-	typedef void (*EDITCHANGEFUNC)(void *aParam);
-	struct Callback
-	{
-		bool Active;
-		EDITCHANGEFUNC m_Callback;
-		void *m_Param;
-	};
+	friend class PauseEditListener;
+	friend class Edit2Settings;
 
 public:
 	Edit *m_next;
 	Edit *m_prev;
 
 private:
-	struct LocalSettings
-	{
-		wchar_t *Mask;
-		int TabSize;
-		int TabExpandMode;
-		const FARString *strWordDiv;
-		UINT codepage;
-		uint64_t Color;
-		uint64_t SelColor;
-		uint64_t ColorUnChanged;
-		EDITCHANGEFUNC CallbackFunc;
-		void *CallbackParam;
-		int MaxLength;
-		int CursorSize;
-	};
-	wchar_t *Str;
-	std::unique_ptr<std::vector<ColorItem>> ColorList;
-	std::unique_ptr<LocalSettings> m_LocalSettings;
-	std::unique_ptr<std::vector<int>> m_WrapBreaks;
+	EcoVector<ColorItem> ColorList;
+	EcoVector<int> m_WrapBreaks;
+	EcoString Str;
 
-	int StrSize;
 	int LeftPos;
 	int CurPos;
 	int PrevCurPos;		// 12.08.2000 KM - предыдущее положение курсора
@@ -174,6 +153,7 @@ private:
 	int SelStart;
 	int SelEnd;
 	int CursorPos;
+
 private:
 	virtual void DisplayObject();
 	int InsertKey(FarKey Key);
@@ -195,7 +175,6 @@ private:
 	int RealPosToCell(int PrevLength, int PrevPos, int Pos, int *CorrectPos);
 	void SanitizeSelectionRange();
 	Editor *GetEditorOwner();
-	LocalSettings &GetLocalSettings();
 	DWORD TranscodeCodePage(UINT oldCodepage, UINT codepage);
 	const wchar_t *WordDiv();
 	void GetObjectColors(uint64_t &Color, uint64_t &SelColor, uint64_t &ColorUnChanged);
@@ -216,10 +195,12 @@ protected:
 	int GetVisualLineCount() const;
 	void GetVisualLine(int line, int& start, int& end) const;
 public:
-	Edit(ScreenObject *pOwner = nullptr, Callback *aCallback = nullptr, bool bAllocateData = true);
+	Edit(ScreenObject *pOwner = nullptr);
 	virtual ~Edit();
 
-public:
+	void SetListener(IEditListener *Listener = nullptr);
+	IEditListener *GetListener();
+
 	DWORD SetCodePage(UINT codepage);	// BUGBUG
 	UINT GetCodePage();					// BUGBUG
 
@@ -245,7 +226,7 @@ public:
 
 	void SetShowWhiteSpace(int Mode) { Flags.Change(FEDITLINE_SHOWWHITESPACE, Mode); }
 
-	void GetString(wchar_t *Str, int MaxSize);
+	void GetString(wchar_t *Data, int MaxSize);
 	void GetString(FARString &strStr);
 
 	const wchar_t *GetStringAddr();
@@ -255,12 +236,12 @@ public:
 
 	void SetBinaryString(const wchar_t *Str, int Length);
 
-	void GetBinaryString(const wchar_t **Str, const wchar_t **EOL, int &Length);
+	void GetBinaryString(const wchar_t **Data, const wchar_t **EOL, int &Length);
 
 	void SetEOL(const wchar_t *EOL);
 	const wchar_t *GetEOL();
 
-	int GetSelString(wchar_t *Str, int MaxSize);
+	int GetSelString(wchar_t *Data, int MaxSize);
 	int GetSelString(FARString &strStr);
 
 	int GetLength();
@@ -268,7 +249,7 @@ public:
 	void InsertString(const wchar_t *Str);
 	void InsertBinaryString(const wchar_t *Str, int Length);
 
-	int Search(const FARString &Str, FARString &ReplaceStr, int Position, int Case, int WholeWords,
+	int Search(const FARString &What, FARString &ReplaceStr, int Position, int Case, int WholeWords,
 			int Reverse, int Regexp, int *SearchLength);
 
 	void SetClearFlag(int Flag) { Flags.Change(FEDITLINE_CLEARFLAG, Flag); }
@@ -290,7 +271,7 @@ public:
 	int GetMaxLength() const;
 
 	void SetInputMask(const wchar_t *InputMask);
-	const wchar_t *GetInputMask() const { return m_LocalSettings ? m_LocalSettings->Mask : nullptr; }
+	const wchar_t *GetInputMask() const;
 
 	void SetOvertypeMode(int Mode) { Flags.Change(FEDITLINE_OVERTYPE, Mode); };
 	int GetOvertypeMode() { return Flags.Check(FEDITLINE_OVERTYPE); };
@@ -312,8 +293,6 @@ public:
 	void SetEditorParent(int Mode) { Flags.Change(FEDITLINE_PARENT_EDITOR, Mode); };
 	void ExpandTabs();
 
-	void InsertTab();
-
 	void AddColor(const ColorItem *col);
 	size_t DeleteColor(int ColorPos);
 	bool GetColor(ColorItem *col, int Item);
@@ -328,7 +307,6 @@ public:
 	void SetReadOnly(int NewReadOnly) { Flags.Change(FEDITLINE_READONLY, NewReadOnly); }
 	int GetDropDownBox() { return Flags.Check(FEDITLINE_DROPDOWNBOX); }
 	void SetDropDownBox(int NewDropDownBox) { Flags.Change(FEDITLINE_DROPDOWNBOX, NewDropDownBox); }
-	void SetWordDiv(const FARString &WordDiv);
 	virtual void Changed(bool DelBlock = false);
 };
 
@@ -366,14 +344,13 @@ public:
 		EC_ENABLEFNCOMPLETE_ESCAPED = 0x4,
 	};
 
-	EditControl(ScreenObject *pOwner = nullptr, Callback *aCallback = nullptr, bool bAllocateData = true,
-			History *iHistory = 0, FarList *iList = 0, DWORD iFlags = 0);
+	EditControl(ScreenObject *pOwner = nullptr, History *iHistory = 0, FarList *iList = 0, DWORD iFlags = 0);
+
 	virtual int ProcessMouse(MOUSE_EVENT_RECORD *MouseEvent);
 	virtual int ProcessKey(FarKey Key);
 	virtual void FastShow();
 	virtual void Show();
 	virtual void Changed(bool DelBlock = false);
-	void SetCallbackState(bool Enable) { Flags.Change(FEDITLINE_CALLBACKACTIVE, Enable); }
 
 	void AutoComplete(bool Manual, bool DelBlock);
 	void EnableAC(bool Permanent = false);
