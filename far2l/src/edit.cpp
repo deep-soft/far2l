@@ -222,6 +222,11 @@ Edit::~Edit()
 	s_e2s.Dismiss(this);
 }
 
+void Edit::Compact()
+{
+	Str.Compact();
+}
+
 void Edit::SetListener(IEditListener *Listener)
 {
 	if (auto *s = s_e2s.Get(this, Listener != nullptr)) {
@@ -472,7 +477,7 @@ void Edit::FastShow()
 	const wchar_t *Mask = GetInputMask();
 	uint64_t Color, SelColor, ColorUnChanged;
 	GetObjectColors(Color, SelColor, ColorUnChanged);
-	int EditLength = ObjWidth;
+	int EditLength = ObjWidth();
 
 	if (!Flags.Check(FEDITLINE_EDITBEYONDEND) && CurPos > Str.Size() && Str.Size() >= 0)
 		CurPos = Str.Size();
@@ -1126,18 +1131,16 @@ int Edit::ProcessKey(FarKey Key)
 		}
 		case KEY_SHIFTHOME:
 		case KEY_SHIFTNUMPAD7: {
-			Lock();
-
+			LockThinObject l(*this);
 			while (CurPos > 0)
 				RecurseProcessKey(KEY_SHIFTLEFT);
-
-			Unlock();
+			l.Unlock();
 			Show();
 			return TRUE;
 		}
 		case KEY_SHIFTEND:
 		case KEY_SHIFTNUMPAD1: {
-			Lock();
+			LockThinObject l(*this);
 			int Len = (Mask && *Mask) ? CalcRTrimmedStrSize() : Str.Size();
 
 			int LastCurPos = CurPos;
@@ -1151,7 +1154,7 @@ int Edit::ProcessKey(FarKey Key)
 				LastCurPos = CurPos;
 			}
 
-			Unlock();
+			l.Unlock();
 			Show();
 			return TRUE;
 		}
@@ -1193,8 +1196,7 @@ int Edit::ProcessKey(FarKey Key)
 				CurPos = Str.Size();
 			}
 
-			Lock();
-
+			LockThinObject l(*this);
 			PauseEditListener pel(*this);
 
 			// BUGBUG
@@ -1213,21 +1215,21 @@ int Edit::ProcessKey(FarKey Key)
 					break;
 			}
 
-			Unlock();
+			l.Unlock();
 			pel.Resume();
 			Changed(true);
 			Show();
 			return TRUE;
 		}
 		case KEY_CTRLQ: {
-			Lock();
+			LockThinObject l(*this);
 
 			if (!Flags.Check(FEDITLINE_PERSISTENTBLOCKS)
 					&& (SelStart != -1 || Flags.Check(FEDITLINE_CLEARFLAG)))
 				RecurseProcessKey(KEY_DEL);
 
 			ProcessCtrlQ();
-			Unlock();
+			l.Unlock();
 			Show();
 			return TRUE;
 		}
@@ -1283,7 +1285,7 @@ int Edit::ProcessKey(FarKey Key)
 			if (CurPos >= Str.Size())
 				return FALSE;
 
-			Lock();
+			LockThinObject l(*this);
 			PauseEditListener pel(*this);
 			if (Mask && *Mask) {
 				int MaskLen = StrLength(Mask);
@@ -1317,7 +1319,7 @@ int Edit::ProcessKey(FarKey Key)
 				}
 			}
 
-			Unlock();
+			l.Unlock();
 			pel.Resume();
 			Changed(true);
 			Show();
@@ -1436,7 +1438,7 @@ int Edit::ProcessKey(FarKey Key)
 
 			if (GetWordWrap())
 			{
-				RecalculateWordWrap(ObjWidth, GetTabSize());
+				RecalculateWordWrap(ObjWidth(), GetTabSize());
 			}
 			Changed(true);
 			Show();
@@ -1886,31 +1888,6 @@ int Edit::GetObjectColorUnChanged()
 	return ColorUnChanged;
 }
 
-void Edit::GetString(wchar_t *Data, int MaxSize)
-{
-	// far_wcsncpy(Str, this->Str,MaxSize);
-	if (LIKELY(MaxSize > 0)) {
-		const auto l = Min(Str.Size(), MaxSize - 1);
-		if (l > 0) {
-			wmemcpy(Data, Str.CPtr(), l);
-			Data[l] = 0;
-		}
-		Data[MaxSize - 1] = 0;
-	} else {
-		fprintf(stderr, "Edit::GetString: bad MaxSize=%d\n", MaxSize);
-	}
-}
-
-void Edit::GetString(FARString &strStr)
-{
-	strStr = Str.CPtr();
-}
-
-const wchar_t *Edit::GetStringAddr()
-{
-	return Str.CPtr();
-}
-
 void Edit::SetHiString(const wchar_t *Str)
 {
 	if (Flags.Check(FEDITLINE_READONLY))
@@ -1957,15 +1934,16 @@ void Edit::CheckForSpecialWidthChars(const wchar_t *CheckStr, int Length)
 {
 	if (Flags.Check(FEDITLINE_HASSPECIALWIDTHCHARS)) return;
 
+	bool AndTabs = true;
 	if (!CheckStr) {
 		CheckStr = Str.CPtr();
 		Length = Str.Size();
+	} else if (GetConvertTabs() == EXPAND_ALLTABS) {
+		AndTabs = false; // this is a string to be inserted and its tabs gonna be expanded to spaces, so ignore them
 	}
-
 	for (int i = 0; i < Length; ++i) {
-		auto wc = CheckStr[i];
-		if (wc == L'\t' || CharClasses::IsFullWidth(wc)
-						|| CharClasses::IsXxxfix(wc) ) {
+		const auto wc = CheckStr[i];
+		if ( (wc == L'\t' && AndTabs) || CharClasses::IsFullWidth(wc) || CharClasses::IsXxxfix(wc) ) {
 			Flags.Set(FEDITLINE_HASSPECIALWIDTHCHARS);
 			return;
 		}
@@ -2048,11 +2026,10 @@ void Edit::SetBinaryString(const wchar_t *Str, int Length)
 		*/
 		RefreshStrByMask(!*Str);
 	} else {
-		if (!this->Str.Assign(Str, Length)) {
+		if (!this->Str.Assign(Str, Length, true)) {
 			fprintf(stderr, "Edit::SetBinaryString: failed to assign to length of %d\n", Length);
 			return;
 		}
-
 		if (GetConvertTabs() == EXPAND_ALLTABS)
 			ExpandTabs();
 
@@ -2060,11 +2037,11 @@ void Edit::SetBinaryString(const wchar_t *Str, int Length)
 		CurPos = this->Str.Size();
 
 		Flags.Clear(FEDITLINE_HASSPECIALWIDTHCHARS);
-		CheckForSpecialWidthChars();
+		CheckForSpecialWidthChars(Str, Length);
 	}
 
 	if (GetWordWrap()) {
-		int Width = ObjWidth;
+		int Width = ObjWidth();
 		if (Flags.Check(FEDITLINE_EDITORMODE)) { // Corresponds to editor.cpp's EdOpt.ShowScrollBar
 			// This logic is a bit of a guess, assuming FEDITLINE_EDITORMODE is a good proxy.
 			// In editor.cpp, XX2 is calculated based on NumLastLine > Y2-Y1+1. We don't have that here.
@@ -2077,14 +2054,67 @@ void Edit::SetBinaryString(const wchar_t *Str, int Length)
 	Changed();
 }
 
-void Edit::GetBinaryString(const wchar_t **Data, const wchar_t **EOL, int &Length)
+void Edit::GetString(wchar_t *Data, int MaxSize)
 {
-	*Data = Str.CPtr();
-	Length = Str.Size();	//???
+	if (LIKELY(MaxSize > 0)) {
+		const auto l = std::min(Str.Size(), MaxSize - 1);
+		Str.CopyTo(Data, 0, l);
+		Data[l] = 0;
+	}
+}
 
+void Edit::GetString(FARString &dst, const wchar_t **EOL)
+{
 	if (EOL)
 		*EOL = EOL_TYPE_CHARS[GetEndType()];
+
+	Str.CopyTo(dst);
 }
+
+void Edit::GetString(std::wstring &dst, const wchar_t **EOL)
+{
+	if (EOL)
+		*EOL = EOL_TYPE_CHARS[GetEndType()];
+
+	Str.CopyTo(dst);
+}
+
+std::wstring Edit::GetString()
+{
+	std::wstring out;
+	Str.CopyTo(out);
+	return out;
+}
+
+int Edit::GetStringLength(const wchar_t **EOL)
+{
+	if (EOL)
+		*EOL = EOL_TYPE_CHARS[GetEndType()];
+
+	return Str.Size();
+}
+
+const wchar_t *Edit::GetStringAddr()
+{
+	const wchar_t *out = Str.CPtr();
+	return LIKELY(out) ? out : L"";
+}
+
+const wchar_t *Edit::GetStringAddr(int &Length, const wchar_t **EOL)
+{
+	if (EOL)
+		*EOL = EOL_TYPE_CHARS[GetEndType()];
+
+	const wchar_t *out = Str.CPtr();
+	if (LIKELY(out)) {
+		Length = Str.Size();	//???
+		return out;
+	}
+
+	Length = 0;
+	return L"";
+}
+
 
 int Edit::GetSelString(wchar_t *Data, int MaxSize)
 {
@@ -2197,7 +2227,7 @@ void Edit::InsertBinaryString(const wchar_t *Str, int Length)
 		}
 
 		if (GetWordWrap()) {
-			RecalculateWordWrap(ObjWidth, GetTabSize());
+			RecalculateWordWrap(ObjWidth(), GetTabSize());
 		}
 
 		CheckForSpecialWidthChars(Str, Length);
@@ -2720,7 +2750,7 @@ void Edit::ApplyColor()
 		TabEditorPos = Start;
 
 		// Пропускаем элементы раскраски у которых начальная позиция за экраном
-		if (Start > ObjWidth - 1)
+		if (Start > ObjWidth() - 1)
 			continue;
 
 		// Корректировка относительно табов (отключается, если присутвует флаг ECF_TAB1)
@@ -2782,8 +2812,8 @@ void Edit::ApplyColor()
 		if (Start < 0)
 			Start = 0;
 
-		if (End > ObjWidth - 1)
-			End = ObjWidth - 1;
+		if (End > ObjWidth() - 1)
+			End = ObjWidth() - 1;
 
 		// Устанавливаем длину раскрашиваемого элемента
 		Length = End - Start + 1;
