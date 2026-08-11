@@ -145,7 +145,6 @@ public:
 private:
 	struct Fields // lazily instantiated and accessed by EcoLazy
 	{
-		EcoVector<ColorItem> ColorList;
 		EcoVector<int> WrapBreaks;
 
 		int LeftPos{0};
@@ -162,11 +161,11 @@ private:
 		bool IsDefault() const
 		{
 			return LeftPos == 0 && CurPos == 0 && PrevCurPos == 0 && CursorPos == 0
-				&& MSelStart == -1 && SelStart == -1 && SelEnd == 0
-				&& WrapBreaks.empty() && ColorList.empty();
+				&& MSelStart == -1 && SelStart == -1 && SelEnd == 0 && WrapBreaks.empty();
 		}
 	};
 	struct MyEcoLazy : EcoLazy<Fields> {} fields;
+	EcoVector<ColorItem> ColorList; // all colors will be fullfilled by colorer as its fast now
 	EcoString Str;
 
 private:
@@ -216,7 +215,8 @@ public:
 	void SetListener(IEditListener *Listener = nullptr);
 	IEditListener *GetListener();
 
-	void Compact();
+	void Compact() { Str.Compact(); }
+	bool IsCompact() const { return Str.IsCompact(); }
 
 	DWORD SetCodePage(UINT codepage);	// BUGBUG
 	UINT GetCodePage();					// BUGBUG

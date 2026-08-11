@@ -3,8 +3,32 @@
 
 StackElem* CRegExp::RegExpStack {nullptr};
 int CRegExp::RegExpStack_Size {0};
+
+
 /////////////////////////////////////////////////////////////////////////////
-//
+
+
+void SMatches::topseSanitize(int cur)
+{
+    while (topse < cur) {
+      ++topse;
+      s[topse] = -1;
+      e[topse] = -1;
+    }
+}
+
+#if !defined NAMED_MATCHES_IN_HASH
+void SMatches::topnseSanitize(int cur)
+{
+    while (topnse < cur) {
+      ++topnse;
+      s[topnse] = -1;
+      e[topnse] = -1;
+    }
+}
+#endif
+
+
 SRegInfo::SRegInfo()
 {
   un.param = nullptr;
@@ -72,6 +96,12 @@ CRegExp::~CRegExp()
 #ifndef NAMED_MATCHES_IN_HASH
   for (int bp = 0; bp < cnMatch; bp++) delete brnames[bp];
 #endif
+}
+
+bool CRegExp::matchChars(wchar one, wchar another) const
+{
+  return one == another ||
+    (ignoreCase && Character::toLowerCase(one) == Character::toLowerCase(another));
 }
 
 EError CRegExp::setRELow(const UnicodeString& expr)
@@ -444,11 +474,9 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
         return EError::EBRACKETS;
       if (comma == -1)
         comma = en;
-      UnicodeString ds = UnicodeString(expr, st, comma - st);
-      next->s = UnicodeTools::getNumber(&ds);
-      UnicodeString de = UnicodeString(expr, comma + 1, en - comma - 1);
+      next->s = UnicodeTools::getNumber(&expr, st, comma - st);
       if (comma != en)
-        next->e = UnicodeTools::getNumber(&de);
+        next->e = UnicodeTools::getNumber(&expr, comma + 1, en - comma - 1);
       else
         next->e = next->s;
       if (next->e == -1)
@@ -671,10 +699,9 @@ bool CRegExp::isWordBoundary(int toParse)
 {
   int before = 0;
   int after = 0;
-  if (toParse < end && (Character::isLetterOrDigit((*global_pattern)[toParse]) || (*global_pattern)[toParse] == '_'))
+  if (toParse < end && Character::isLetterOrDigitOrUnderscore((*global_pattern)[toParse]))
     after = 1;
-  if (toParse > 0 &&
-      (Character::isLetterOrDigit((*global_pattern)[toParse - 1]) || (*global_pattern)[toParse - 1] == '_'))
+  if (toParse > 0 && Character::isLetterOrDigitOrUnderscore((*global_pattern)[toParse - 1]))
     before = 1;
   return before + after == 1;
 }
@@ -731,12 +758,12 @@ bool CRegExp::checkMetaSymbol(EMetaSymbols symb, int& toParse)
       toParse++;
       return true;
     case EMetaSymbols::ReWordSymb:
-      if (toParse >= end || !(Character::isLetterOrDigit(pattern[toParse]) || pattern[toParse] == '_'))
+      if (toParse >= end || !Character::isLetterOrDigitOrUnderscore(pattern[toParse]))
         return false;
       toParse++;
       return true;
     case EMetaSymbols::ReNWordSymb:
-      if (toParse >= end || Character::isLetterOrDigit(pattern[toParse]) || pattern[toParse] == '_')
+      if (toParse >= end || Character::isLetterOrDigitOrUnderscore(pattern[toParse]))
         return false;
       toParse++;
       return true;
@@ -869,6 +896,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             if (re->param0 == -1)
               break;
             if (re->op == EOps::ReBrackets) {
+              matches->topseSanitize(re->param0);
               if (re->param0 || !startChange)
                 matches->s[re->param0] = re->s;
               if (re->param0 || !endChange)
@@ -878,6 +906,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             }
             else {
 #ifndef NAMED_MATCHES_IN_HASH
+              matches->topnseSanitize(re->param0);
               matches->ns[re->param0] = re->s;
               matches->ne[re->param0] = toParse;
               if (matches->ne[re->param0] < matches->ns[re->param0])
@@ -893,15 +922,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
-            if (ignoreCase) {
-              if (Character::toLowerCase(pattern[toParse]) != Character::toLowerCase(re->un.symbol) &&
-                  Character::toUpperCase(pattern[toParse]) != Character::toUpperCase(re->un.symbol))
-              {
-                check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-                continue;
-              }
-            }
-            else if (pattern[toParse] != re->un.symbol) {
+            if (!matchChars(pattern[toParse], re->un.symbol)) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
@@ -920,7 +941,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
               continue;
             }
             if (ignoreCase) {
-              if (UStr::caseCompare(UnicodeString(pattern, toParse, wlen), *re->un.word) != 0) {
+              if (UStr::caseCompare(pattern, toParse, wlen, *re->un.word) != 0) {
                 check_stack(false, &re, &prev, &toParse, &leftenter, &action);
                 continue;
               }
@@ -1060,6 +1081,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
+            matches->topnseSanitize(sv);
             if (matches->ns[sv] == -1 || matches->ne[sv] == -1) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
@@ -1107,6 +1129,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
+            matches->topseSanitize(sv);
             if (matches->s[sv] == -1 || matches->e[sv] == -1) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
@@ -1350,15 +1373,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
 inline bool CRegExp::quickCheck(int toParse)
 {
   if (firstChar != BAD_WCHAR) {
-    if (toParse >= end)
-      return false;
-    if (ignoreCase) {
-      if (Character::toLowerCase((*global_pattern)[toParse]) != Character::toLowerCase(firstChar))
-        return false;
-    }
-    else if ((*global_pattern)[toParse] != firstChar)
-      return false;
-    return true;
+    return toParse < end && matchChars((*global_pattern)[toParse], firstChar);
   }
   if (firstMetaChar != EMetaSymbols::ReBadMeta)
     switch (firstMetaChar) {
@@ -1407,17 +1422,16 @@ inline bool CRegExp::parseRE(int pos)
   if (!positionMoves && (firstChar != BAD_WCHAR || firstMetaChar != EMetaSymbols::ReBadMeta) && !quickCheck(toParse))
     return false;
 
-  int i;
-  for (i = 0; i < cMatch; i++) matches->s[i] = matches->e[i] = -1;
+  matches->reset();
   matches->cMatch = cMatch;
 #ifndef NAMED_MATCHES_IN_HASH
-  for (i = 0; i < cnMatch; i++) matches->ns[i] = matches->ne[i] = -1;
   matches->cnMatch = cnMatch;
 #endif
   do {
     // stack=null;
-    if (lowParse(tree_root, nullptr, toParse))
+    if (lowParse(tree_root, nullptr, toParse)) {
       return true;
+    }
     if (!positionMoves)
       return false;
     toParse = ++pos;
