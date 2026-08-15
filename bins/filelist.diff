@@ -1,0 +1,23 @@
+diff --git a/far2l/src/panels/filelist.cpp b/far2l/src/panels/filelist.cpp
+--- a/far2l/src/panels/filelist.cpp
++++ b/far2l/src/panels/filelist.cpp
+@@ -3083,7 +3083,7 @@
+ 		ReplaceStrings(strMask, L"]", L"[]]", -1);
+ 		ReplaceStrings(strMask, L"<[%>", L"[[]", -1);
+ 	}
+-
++    for (int attempt=0; attempt<2; attempt++) {
+ 	for (int I = CurFile + (Next ? Direct : 0); I >= 0 && I < ListData.Count(); I+= Direct) {
+ 		if (CmpName(strMask, ListData[I]->strName, true)) {
+ 			if (!TestParentFolderName(ListData[I]->strName)) {
+@@ -3110,7 +3110,9 @@
+ 			}
+ 		}
+ 	}
+-
++	if (!strMask.Begins(L'*'))
++		strMask = L'*' + strMask;
++	}
+ 	return false;
+ }
+
