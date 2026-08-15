@@ -2,6 +2,7 @@
 #define COLORER_CREGEXP_H
 
 #include "colorer/Common.h"
+#include <array>
 
 /**
     @addtogroup cregexp Regular Expressions
@@ -335,6 +336,7 @@ class CRegExp
   bool parse(const UnicodeString* str, int pos, int eol, SMatches* mtch, int soscheme = 0,
              int moves = -1);
 #endif
+  bool canStartWith(wchar ch) const;
 
  private:
   bool ignoreCase = false;
@@ -344,8 +346,9 @@ class CRegExp
   bool multiLine = false;
   SRegInfo* tree_root = nullptr;
   EError error = EError::EOK;
-  UChar firstChar = 0;
-  EMetaSymbols firstMetaChar = EMetaSymbols::ReBadMeta;
+  SRegInfo* firstNode = nullptr;
+  std::array<uint64_t, 2> firstCharMask = {};
+  bool firstCharMaskUseful = false;
 #ifdef COLORERMODE
   CRegExp* backRE = nullptr;
   const UnicodeString* backStr = nullptr;
@@ -372,10 +375,17 @@ class CRegExp
   EError setStructs(SRegInfo*&, const UnicodeString& expr, int& endPos);
 
   bool matchChars(wchar one, wchar another) const;
+  struct FirstChars
+  {
+    std::array<uint64_t, 2> mask = {};
+    bool nullable = false;
+  };
+  FirstChars analyzeFirstChars(const SRegInfo* re) const;
+  FirstChars firstCharsForNode(const SRegInfo* re) const;
+  void addFirstChar(FirstChars& result, wchar ch) const;
   void optimize();
   bool quickCheck(int toParse);
   bool isWordBoundary(int toParse);
-  bool isNWordBoundary(int toParse);
   bool checkMetaSymbol(EMetaSymbols metaSymbol, int& toParse);
   bool lowParse(SRegInfo* re, SRegInfo* prev, int toParse);
   bool parseRE(int toParse);
