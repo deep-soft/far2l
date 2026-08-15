@@ -55,6 +55,7 @@ env:
   use_SDL: ""
   sed_stuff:          "./bins/sed-stuff.sh"
   filelist_patch:     "./bins/filelist-patch.sh"
+  farver_patch:       "./bins/farver-patch.sh"
   multiarc_pdf_patch: "./bins/multiarc-pdf-patch.sh"
 
 jobs:
@@ -157,6 +158,13 @@ jobs:
       run: |
         if [ -f ${{ env.filelist_patch }} ]; then
            bash ${{ env.filelist_patch }};
+        fi
+
+    - name: ${{ env.farver_patch }}
+      shell: bash
+      run: |
+        if [ -f ${{ env.farver_patch }} ]; then
+           bash ${{ env.farver_patch }};
         fi
 
     - name: set env.SED_EXE and macOS install gnu-sed
