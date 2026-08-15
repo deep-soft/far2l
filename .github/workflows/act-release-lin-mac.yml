@@ -1,4 +1,4 @@
-# 2026-08-15 22:00
+# 2026-08-15 22:30
 # act-release-lin-mac.yml
 name: act-Release -Lin-Mac
 
@@ -53,9 +53,6 @@ env:
   PROG_VERSION: "v1.0.0"
   default_branch: "master"
   use_SDL: ""
-  sed_stuff:          "./bins/sed-stuff.sh"
-  filelist_patch:     "./bins/filelist-patch.sh"
-  multiarc_pdf_patch: "./bins/multiarc-pdf-patch.sh"
 
 jobs:
   build:
@@ -152,11 +149,11 @@ jobs:
       run: |
         echo "PROG_VERSION=${{ env.PROG_VERSION }}";
 
-    - name: ${{ env.filelist_patch }}
+    - name: ./bins/filelist-patch.sh
       shell: bash
       run: |
-        if [ -f ${{ env.filelist_patch }} ]; then
-           bash ${{ env.filelist_patch }};
+        if [ -f ./bins/filelist-patch.sh ]; then
+           bash ./bins/filelist-patch.sh;
 
     - name: set env.SED_EXE and macOS install gnu-sed
       #if: ${{ startsWith(matrix.job.os, 'macos') }}
@@ -184,11 +181,11 @@ jobs:
         DEBUG_MODE_1: ${{ inputs.DEBUG_MODE_1 }}
         DEBUG_MODE_2: ${{ inputs.DEBUG_MODE_2 }}
       run: |
-        if [[ -f ${{ env.multiarc_pdf_patch }} ]]; then
-          bash ${{ env.multiarc_pdf_patch }} "${{ env.multiarc_pdf_patch }}.txt" "${{ inputs.MULTIARC_PDF_PARAMS }}";
+        if [[ -f ./bins/multiarc-pdf-patch.sh ]]; then
+          bash ./bins/multiarc-pdf-patch.sh "./bins/multiarc-pdf-patch.sh.txt" "${{ inputs.MULTIARC_PDF_PARAMS }}";
         fi
 
-    - name: ${{ env.sed_stuff }}
+    - name: ./bins/sed-stuff.sh
       if: ${{ inputs.SED_STUFF }}
       continue-on-error: true
       shell: bash
@@ -196,7 +193,7 @@ jobs:
         DEBUG_MODE_1: ${{ inputs.DEBUG_MODE_1 }}
         DEBUG_MODE_2: ${{ inputs.DEBUG_MODE_2 }}
       run: |
-        bash ${{ env.sed_stuff }} "_" "${{ inputs.SED_STUFF_PARAMS }}";
+        bash ./bins/sed-stuff.sh "_" "${{ inputs.SED_STUFF_PARAMS }}";
 
     - name: extra scripts
       continue-on-error: true
