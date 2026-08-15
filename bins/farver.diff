@@ -1,0 +1,27 @@
+diff --git a/far2l/bootstrap/scripts/farver.pl b/far2l/bootstrap/scripts/farver.pl
+--- a/far2l/bootstrap/scripts/farver.pl
++++ b/far2l/bootstrap/scripts/farver.pl
+@@ -1,6 +1,7 @@
+ #!/usr/bin/env perl
+ use strict;
+ use far2l;
++use POSIX qw(strftime);
+ 
+ my $path = shift;
+ my $arch = shift;
+@@ -12,13 +13,14 @@
+ 
+ my (@tm) = localtime($ENV{SOURCE_DATE_EPOCH} || time());
+ my $year = $tm[5] + 1900;
++my $date = strftime "%Y-%m-%d-%H%M", localtime;
+
+ my $tmp = "$path.tmp";
+ 
+ my $f;
+ open($f, '>', $tmp) or die "$tmp: $!";
+ printf $f "uint32_t FAR_VERSION __attribute__((used)) = 0x%04x%04x;\n", $major, $minor;
+-print $f "const char *FAR_BUILD __attribute__((used)) = \"$major.$minor.$patch\";\n";
++print $f "const char *FAR_BUILD __attribute__((used)) = \"$major.$minor.$patch ($date)\";\n";
+ print $f "const char *Copyright __attribute__((used)) = \"FAR2L, version $major.$minor.$patch $arch\\nCopyright (C) 1996-2000 Eugene Roshal, Copyright (C) 2000-2016 Far Group, Copyright (C) 2016-$year Far People\";\n";
+ close $f;
+
