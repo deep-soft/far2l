@@ -1,4 +1,4 @@
-# 2026-05-01 01:10
+# 2026-08-15 22:00
 # act-release-lin-mac.yml
 name: act-Release -Lin-Mac
 
@@ -53,6 +53,9 @@ env:
   PROG_VERSION: "v1.0.0"
   default_branch: "master"
   use_SDL: ""
+  sed_stuff:          "./bins/sed-stuff.sh"
+  filelist_patch:     "./bins/filelist-patch.sh"
+  multiarc_pdf_patch: "./bins/multiarc-pdf-patch.sh"
 
 jobs:
   build:
@@ -149,6 +152,12 @@ jobs:
       run: |
         echo "PROG_VERSION=${{ env.PROG_VERSION }}";
 
+    - name: ${{ env.filelist_patch }}
+      shell: bash
+      run: |
+        if [ -f ${{ env.filelist_patch }} ]; then
+           bash ${{ env.filelist_patch }};
+
     - name: set env.SED_EXE and macOS install gnu-sed
       #if: ${{ startsWith(matrix.job.os, 'macos') }}
       shell: bash
@@ -175,11 +184,11 @@ jobs:
         DEBUG_MODE_1: ${{ inputs.DEBUG_MODE_1 }}
         DEBUG_MODE_2: ${{ inputs.DEBUG_MODE_2 }}
       run: |
-        if [[ -f bins/multiarc-pdf-patch.sh ]]; then
-          bash bins/multiarc-pdf-patch.sh "bins/sed-stuff-multiarc-pdf.txt" "${{ inputs.MULTIARC_PDF_PARAMS }}";
+        if [[ -f ${{ env.multiarc_pdf_patch }} ]]; then
+          bash ${{ env.multiarc_pdf_patch }} "${{ env.multiarc_pdf_patch }}.txt" "${{ inputs.MULTIARC_PDF_PARAMS }}";
         fi
 
-    - name: sed-stuff
+    - name: ${{ env.sed_stuff }}
       if: ${{ inputs.SED_STUFF }}
       continue-on-error: true
       shell: bash
@@ -187,7 +196,7 @@ jobs:
         DEBUG_MODE_1: ${{ inputs.DEBUG_MODE_1 }}
         DEBUG_MODE_2: ${{ inputs.DEBUG_MODE_2 }}
       run: |
-        bash bins/sed-stuff.sh "_" "${{ inputs.SED_STUFF_PARAMS }}";
+        bash ${{ env.sed_stuff }} "_" "${{ inputs.SED_STUFF_PARAMS }}";
 
     - name: extra scripts
       continue-on-error: true
@@ -218,9 +227,7 @@ jobs:
             extra_plugin_list2='SimpleComment EditWrap';
           fi
 
-
           # add new extra plugins
-          
           for plug1 in $extra_plugin_list1 ; do
             echo "ExtraPluginS=$plug1";
             git clone --depth 1 https://github.com/deep-soft/far2l-$plug1.git && \
