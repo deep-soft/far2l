@@ -495,6 +495,17 @@ MultilinePaste
 "Вставка багаторядкового тексту"
 "Устаўка шматрадковага тэксту"
 
+CtrlEnterMultipleItems
+"Ctrl+Ввод вставляет все выделенные объекты"
+"Ctrl+Enter inserts all selected items"
+upd:"Ctrl+Enter inserts all selected items"
+upd:"Ctrl+Enter inserts all selected items"
+upd:"Ctrl+Enter inserts all selected items"
+upd:"Ctrl+Enter inserts all selected items"
+upd:"Ctrl+Enter inserts all selected items"
+upd:"Ctrl+Enter inserts all selected items"
+upd:"Ctrl+Enter inserts all selected items"
+
 F1
 l:
 l://functional keys - 6 characters max
