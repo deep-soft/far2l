@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"log"
 )
 
 const RIGHT_ALT_PRESSED     = 0x0001 // the right alt key is pressed.
@@ -72,38 +73,50 @@ func far2l_ToggleRAlt(pressed bool) {
 	far2l_SendKeyEvent(0, 0x12, pressed)
 }
 
-func far2l_TypeFKey(n uint32) { far2l_TypeVK(0x6F + n) }
-func far2l_TypeDigit(n uint32) { far2l_TypeVK(0x60 + n) }
+func far2l_TypeFKey(n uint32, count int) { far2l_TypeVK(0x6F + n, count) }
+func far2l_TypeDigit(n uint32, count int) { far2l_TypeVK(0x60 + n, count) }
 
-func far2l_TypeAdd()      { far2l_TypeVK(0x6B) }
-func far2l_TypeSub()      { far2l_TypeVK(0x6D) }
-func far2l_TypeMul()      { far2l_TypeVK(0x6A) }
-func far2l_TypeDiv()      { far2l_TypeVK(0x6F) }
-func far2l_TypeSeparator(){ far2l_TypeVK(0x6C) }
-func far2l_TypeDecimal()  { far2l_TypeVK(0x6E) }
+func far2l_TypeAdd(count int)      { far2l_TypeVK(0x6B, count) }
+func far2l_TypeSub(count int)      { far2l_TypeVK(0x6D, count) }
+func far2l_TypeMul(count int)      { far2l_TypeVK(0x6A, count) }
+func far2l_TypeDiv(count int)      { far2l_TypeVK(0x6F, count) }
+func far2l_TypeSeparator(count int){ far2l_TypeVK(0x6C, count) }
+func far2l_TypeDecimal(count int)  { far2l_TypeVK(0x6E, count) }
 
-func far2l_TypeBack()     { far2l_TypeVK(0x08) }
-func far2l_TypeEnter()    { far2l_TypeVK(0x0D) }
-func far2l_TypeEscape()   { far2l_TypeVK(0x1B) }
-func far2l_TypePageUp()   { far2l_TypeVK(0x21) }
-func far2l_TypePageDown() { far2l_TypeVK(0x22) }
-func far2l_TypeEnd()      { far2l_TypeVK(0x23) }
-func far2l_TypeHome()     { far2l_TypeVK(0x24) }
-func far2l_TypeLeft()     { far2l_TypeVK(0x25) }
-func far2l_TypeUp()       { far2l_TypeVK(0x26) }
-func far2l_TypeRight()    { far2l_TypeVK(0x27) }
-func far2l_TypeDown()     { far2l_TypeVK(0x28) }
-func far2l_TypeIns()      { far2l_TypeVK(0x2D) }
-func far2l_TypeDel()      { far2l_TypeVK(0x2E) }
+func far2l_TypeEscape(count int)   { far2l_TypeVK(0x1B, count) }
+func far2l_TypeEnd(count int)      { far2l_TypeVK(0x23, count) }
+func far2l_TypeHome(count int)     { far2l_TypeVK(0x24, count) }
+func far2l_TypeIns(count int)      { far2l_TypeVK(0x2D, count) }
+func far2l_TypeDel(count int)      { far2l_TypeVK(0x2E, count) }
+func far2l_TypeEnter(count int)    { far2l_TypeVK(0x0D, count) }
+func far2l_TypeTab(count int)      { far2l_TypeVK(0x09, count) }
+func far2l_TypeBack(count int)     { far2l_TypeVK(0x08, count) }
+func far2l_TypePageUp(count int)   { far2l_TypeVK(0x21, count) }
+func far2l_TypePageDown(count int) { far2l_TypeVK(0x22, count) }
+func far2l_TypeLeft(count int)     { far2l_TypeVK(0x25, count) }
+func far2l_TypeUp(count int)       { far2l_TypeVK(0x26, count) }
+func far2l_TypeRight(count int)    { far2l_TypeVK(0x27, count) }
+func far2l_TypeDown(count int)     { far2l_TypeVK(0x28, count) }
 
 
-func far2l_TypeVK(key_code uint32) {
-	far2l_SendKeyEvent(0, key_code, true)
-	far2l_SendKeyEvent(0, key_code, false)
+func far2l_TypeVK(key_code uint32, count int) {
+	if count <= 1 {
+		count = 1;
+		log.Println("TypeVK:", key_code)
+	} else {
+		log.Println("TypeVK:", key_code, "(", count, "times)")
+	}
+	for ;count > 0; count-- {
+		performAutoSync();
+		far2l_SendKeyEvent(0, key_code, true)
+		far2l_SendKeyEvent(0, key_code, false)
+	}
 }
 
 func far2l_TypeText(text string) {
+	log.Println("TypeText:", text)
     for _, r := range text {
+		performAutoSync();
 		far2l_SendKeyEvent(uint32(r), 0, true)
 		far2l_SendKeyEvent(uint32(r), 0, false)
     }
@@ -135,6 +148,26 @@ func far2l_SendKeyEvent(utf32_code uint32, key_code uint32, pressed bool) {
 			key_code = 0xDC
 		} else if utf32_code == '\'' || utf32_code == '"' {
 			key_code = 0xDE
+		} else if utf32_code == '!' {
+			key_code = '1'
+		} else if utf32_code == '@' {
+			key_code = '2'
+		} else if utf32_code == '#' {
+			key_code = '3'
+		} else if utf32_code == '$' {
+			key_code = '4'
+		} else if utf32_code == '%' {
+			key_code = '5'
+		} else if utf32_code == '^' {
+			key_code = '6'
+		} else if utf32_code == '&' {
+			key_code = '7'
+		} else if utf32_code == '*' {
+			key_code = '8'
+		} else if utf32_code == '(' {
+			key_code = '9'
+		} else if utf32_code == ')' {
+			key_code = '0'
 		} else if (utf32_code <= 0x7f) {
 			key_code = utf32_code
 		}
@@ -148,6 +181,7 @@ func far2l_SendKeyEvent(utf32_code uint32, key_code uint32, pressed bool) {
 	binary.LittleEndian.PutUint32(g_buf[20:], 0)
 	if pressed { g_buf[20] = 1 }
 	far2l_WriteToPeer(g_buf[0:24])
+	scheduleAutoSync()
 }
 
 /////////////
@@ -165,28 +199,34 @@ func far2l_DblClickWhereFound(where far2l_FoundString) {
 }
 
 func far2l_LClick(x, y uint32) {
+	log.Println("LClick at", x, y)
+	performAutoSync();
 	far2l_SendMouseEvent(x, y, FROM_LEFT_1ST_BUTTON_PRESSED, 0)
 	far2l_SendMouseEvent(x, y, 0, 0)
 }
 
 func far2l_RClick(x, y uint32) {
+	log.Println("RClick at", x, y)
+	performAutoSync();
 	far2l_SendMouseEvent(x, y, RIGHTMOST_BUTTON_PRESSED, 0)
 	far2l_SendMouseEvent(x, y, 0, 0)
 }
 
 func far2l_DblClick(x, y uint32) {
+	log.Println("DblClick at", x, y)
+	performAutoSync();
 	far2l_SendMouseEvent(x, y, FROM_LEFT_1ST_BUTTON_PRESSED, DOUBLE_CLICK)
 	far2l_SendMouseEvent(x, y, 0, 0)
 }
 
 
 func far2l_SendMouseEvent(x, y, btn, flags uint32) {
-
-	binary.LittleEndian.PutUint32(g_buf[0:], 6) // TEST_CMD_SEND_MOUSE
+	binary.LittleEndian.PutUint32(g_buf[0:], 7) // TEST_CMD_SEND_MOUSE
 	binary.LittleEndian.PutUint32(g_buf[4:], flags)
 	binary.LittleEndian.PutUint32(g_buf[8:], g_controls)
 	binary.LittleEndian.PutUint32(g_buf[12:], btn)
 	binary.LittleEndian.PutUint32(g_buf[16:], x)
 	binary.LittleEndian.PutUint32(g_buf[20:], y)
 	far2l_WriteToPeer(g_buf[0:24])
+	scheduleAutoSync()
 }

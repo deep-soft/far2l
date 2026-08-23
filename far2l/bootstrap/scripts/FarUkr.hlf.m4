@@ -1334,6 +1334,15 @@ $ #Меню команд#
  Додаткова інформація про цю команду
 міститься в темі Порівняння папок @CompFolders@.
 
+   #File diff#            ~Compare current files~@FileDiff@ from active
+                        and passive panels.
+                        Shortcut #Ctrl+D# only if command line empty.
+
+   #File diff#            ~Compare current file~@FileDiff@ from active panel
+   #same name#            with same name file from passive panel
+                        (if passive panel has such file).
+                        Shortcut #Ctrl+Shift+D#.
+
  #Меню користувача# Дозволяє редагувати головне або місцеве
 ~меню користувача~@UserMenu@. Для вставки пункту
  використовується #Ins# чи #Ctrl+N#, для видалення - #Del#,
@@ -3151,6 +3160,11 @@ $ #Редактор: пошук та заміна#
  У режимі пошуку також доступна опція:
 
  #Виділяти знайдене# - ^<wrap>знайдені послідовності будуть виділені.
+
+ У діалозі пошуку є також кнопка #Всі#: за нею виконується пошук одразу по всьому
+файлу, а всі знайдені входження показуються списком з номерами рядків та позицій.
+#Enter# у цьому списку переводить курсор до вибраного входження, #Esc# залишає
+поточну позицію без змін.
 
 
 @FileOpenCreate

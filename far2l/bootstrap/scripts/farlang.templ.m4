@@ -496,8 +496,8 @@ MultilinePaste
 "Устаўка шматрадковага тэксту"
 
 CtrlEnterMultipleItems
-"Ctrl+Ввод вставляет все выделенные объекты"
-"Ctrl+Enter inserts all selected items"
+"Ctrl+&Ввод вставляет все выделенные объекты"
+"Ctrl+&Enter inserts all selected items"
 upd:"Ctrl+Enter inserts all selected items"
 upd:"Ctrl+Enter inserts all selected items"
 upd:"Ctrl+Enter inserts all selected items"
@@ -1858,7 +1858,7 @@ ConfigRO
 "&Зняць атрыбут R/O з CD файлаў"
 
 ConfigSudoEnabled
-"Разрешить повышение привилегий"
+"Разрешить п&овышение привилегий"
 "Enable s&udo privileges elevation"
 upd:"Enable sudo privileges elevation"
 upd:"Enable sudo privileges elevation"
@@ -1968,8 +1968,8 @@ upd:"Copy extended a&ttributes"
 "Капіяваць пашыраныя а&трыбуты"
 
 ConfigOnlyFilesSize
-"Учитывать только размер файлов"
-"Use only files size in estimation"
+"&Учитывать только размер файлов"
+"Use only files size in &estimation"
 upd:"Use only files size in estimation"
 upd:"Use only files size in estimation"
 upd:"Use only files size in estimation"
@@ -3480,8 +3480,8 @@ upd:"Use shell"
 "Ужываць &shell"
 
 ConfigShowStartupBanner
-"Показывать стартовый баннер во встроенном терминале"
-"Show startup banner in built-in terminal"
+"Показывать стартовый баннер во встроенном &терминале"
+"Show startup banner in built-in &terminal"
 upd:"Show startup banner in built-in terminal"
 upd:"Show startup banner in built-in terminal"
 upd:"Show startup banner in built-in terminal"
@@ -8154,6 +8154,17 @@ EditSearchSearch
 "Шукати"
 "Шукаць"
 
+EditSearchAll
+"&Все"
+"&All"
+"&Všechny"
+"&Alles"
+"Mind"
+"Wszystko"
+"Todo"
+"&Всі"
+"&Усё"
+
 EditSearchCancel
 "Отменить"
 "Cancel"
@@ -8221,6 +8232,28 @@ EditNotFound
 "No se puede encontrar la cadena"
 "Рядок не знайдено"
 "Радок не знойдзены"
+
+EditSearchTooMany
+"Слишком много вхождений, уточните строку поиска"
+"Too many occurrences, refine the search string"
+"Příliš mnoho výskytů, upřesněte hledaný řetězec"
+"Zu viele Fundstellen, Suchbegriff eingrenzen"
+"Too many occurrences, refine the search string"
+"Zbyt wiele wystąpień, uściślij szukany tekst"
+"Demasiadas ocurrencias, refine la cadena de búsqueda"
+"Забагато входжень, уточніть рядок пошуку"
+"Занадта шмат уваходжаняў, удакладніце радок пошуку"
+
+EditSearchStatistics
+"Вхождений: %d, строк: %d"
+"Occurrences: %d, lines: %d"
+"Nalezených: %d, řádky: %d"
+"Vorkommen: %d, Zeilen: %d"
+"Occurrences: %d, lines: %d"
+"Wystąpień: %d, linii: %d"
+"Frecuencia: %d, líneas: %d"
+"Входжень: %d, рядків: %d"
+"Уваходжаняў: %d, радкоў: %d"
 
 EditEmptySearchField
 "Пустое поле поиска"
@@ -16717,6 +16750,17 @@ MenuCompareFiles
 "Порівняння фа&йлів         Ctrl+D"
 "Параўнанне фа&йлаў         Ctrl+D"
 
+MenuCompareFilesSame
+"Сравн. файлов с одинак. именем Ctrl+Shift+D"
+"File diff same name Ctrl+Shift+D"
+"Porovnat soubory se stejným názvem Ctrl+Shift+D"
+"Dateien vergleichen mit gleichem namen Ctrl+Shift+D"
+"Fájl diff azonos nevekkel Ctrl+Shift+D"
+"Porównaj pliki o tej samej nazwie Ctrl+Shift+D"
+"Comparar archivos con el mismo nombre Ctrl+Shift+D"
+"Порівняння файлів з однаковою назвою Ctrl+Shift+D"
+"Параўнанне файлаў з такой жа назвай Ctrl+Shift+D"
+
 FileDiffTitle
 "Сравнение файлов"
 "Compare files"
@@ -16993,26 +17037,48 @@ FileDiffStatusFocus
 "Tab Фокус"
 
 FileDiffSelectBoth
-"Выберите файлы на обеих файловых панелях."
-"Select files on both file panels."
-"Vyberte soubory na obou souborových panelech."
-"Wählen Sie Dateien in beiden Dateifenstern aus."
-"Jelöljön ki fájlt mindkét fájlpanelen."
-"Wybierz pliki w obu panelach plików."
-"Seleccione archivos en ambos paneles."
-"Виберіть файли на обох файлових панелях."
-"Выберыце файлы на абедзвюх файлавых панэлях."
+"Выберите файлы на обеих файловых панелях"
+"Select files on both file panels"
+"Vyberte soubory na obou souborových panelech"
+"Wählen Sie Dateien in beiden Dateifenstern aus"
+"Jelöljön ki fájlt mindkét fájlpanelen"
+"Wybierz pliki w obu panelach plików"
+"Seleccione archivos en ambos paneles"
+"Виберіть файли на обох файлових панелях"
+"Выберыце файлы на абедзвюх файлавых панэлях"
+
+FileDiffSelectPassiveNotSameName
+"На пассивной панели нет файла с таким же именем"
+"There is no file with the same name on the passive panel"
+"Na pasivním panelu není žádný soubor se stejným názvem"
+"Auf dem passiven Bedienfeld befindet sich keine Datei mit demselben Namen"
+"Nincs azonos nevű fájl a passzív panelen"
+"Na panelu pasywnym nie ma pliku o tej samej nazwie"
+"No existe ningún archivo con el mismo nombre en el panel pasivo"
+"На пасивній панелі немає файлу з такою ж назвою"
+"На пасіўнай панэлі няма файла з такой назвай"
+
+FileDiffSameBoth
+"Для сравнения выбран один и тот же файл"
+"The same file was selected for comparison"
+"Pro porovnání byl vybrán stejný soubor"
+"Für den Vergleich wurde dieselbe Datei ausgewählt"
+"Ugyanazt a fájlt választottuk ki összehasonlításra"
+"Do porównania wybrano ten sam plik"
+"Se seleccionó el mismo archivo para compararlo"
+"Для порівняння було обрано той самий файл"
+"Для параўнання быў абраны той жа файл"
 
 FileDiffCannotAllocate
-"Не удаётся создать окно сравнения."
-"Cannot allocate compare view."
-"Okno porovnání nelze vytvořit."
-"Vergleichsansicht kann nicht erstellt werden."
-"Az összehasonlító nézet nem hozható létre."
-"Nie można utworzyć widoku porównania."
-"No se puede crear la vista de comparación."
-"Не вдається створити вікно порівняння."
-"Не ўдаецца стварыць акно параўнання."
+"Не удаётся создать окно сравнения"
+"Cannot allocate compare view"
+"Okno porovnání nelze vytvořit"
+"Vergleichsansicht kann nicht erstellt werden"
+"Az összehasonlító nézet nem hozható létre"
+"Nie można utworzyć widoku porównania"
+"No se puede crear la vista de comparación"
+"Не вдається створити вікно порівняння"
+"Не ўдаецца стварыць акно параўнання"
 
 MenuUserMenu
 "Меню пользовател&я"
@@ -17103,8 +17169,8 @@ MenuFarConfig
 "Р&эдактар канфігурацыі"
 
 MenuMacroBrowser
-"Макрокоманды"
-"Macro Browser"
+"Макрокоманд&ы"
+"Macro &Browser"
 upd:"Macro Browser"
 upd:"Macro Browser"
 upd:"Macro Browser"
@@ -17115,7 +17181,7 @@ upd:"Macro Browser"
 
 MenuAboutFar
 "Св&едения о FAR"
-"A&bout FAR"
+"Abou&t FAR"
 "Informace o &FAR"
 "Ü&ber FAR"
 "Információk a &FAR"
@@ -29467,8 +29533,8 @@ upd:"Word wrap"
 upd:"Word wrap"
 
 EnforceColorCorrection
-"Выравнивать контрастность цветов автоматически"
-"Auto-adjust colors contrast"
+"&Выравнивать контрастность цветов автоматически"
+"&Auto-adjust colors contrast"
 upd:"Auto-adjust colors contrast"
 upd:"Auto-adjust colors contrast"
 upd:"Auto-adjust colors contrast"
