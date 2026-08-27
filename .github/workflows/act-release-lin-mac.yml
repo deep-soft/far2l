@@ -76,7 +76,7 @@ jobs:
           - { name: "wWXnPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=no"  }
           - { name: "nWXwPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no  -DPYTHON=yes" }
           - { name: "wWXwPY"  , os: ubuntu-24.04  , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes -DPYTHON=yes" }
-          # - { name: "mini"    , os: macos-13      , dependencies: "-minimal"     , options: ""             }
+          # - { name: "min"     , os: macos-13      , dependencies: "-minimal"     , options: ""             }
           # - { name: "wWX"     , os: macos-13      , dependencies: "-smb-nfs-neon", options: "-DUSEWX=yes"  }
           # - { name: "nWX"     , os: macos-13      , dependencies: "-smb-nfs-neon", options: "-DUSEWX=no"   }
           # - { name: "wPY"     , os: macos-13      , dependencies: "-smb-nfs-neon", options: "-DPYTHON=yes" }
@@ -355,6 +355,17 @@ jobs:
         recursive_exclusions: '.git/objects'
         path: '.'
         env_variable: ASSET_SRC
+
+    - name: Publish source archive
+      continue-on-error: true
+      uses: deep-soft/action-gh-release@v3
+      with:
+        draft: true
+        tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
+        files: |
+          ${{ env.ASSET_SRC }}
+          ${{ env.ZIP_RELEASE_ARCHIVE }}
+
 # source archive - end
 
     - name: Create Build Environment
@@ -456,8 +467,8 @@ jobs:
         draft: true
         tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
         files: |
-          ${{ env.ZIP_RELEASE_ARCHIVE }}
           ${{ env.ASSET_SRC }}
+          ${{ env.ZIP_RELEASE_ARCHIVE }}
           ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.deb
           ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.tar.gz
           ${{github.workspace}}/_build/${{ env.PROG_NAME }}*.dmg
