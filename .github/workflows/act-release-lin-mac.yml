@@ -1,4 +1,4 @@
-# 2026-08-27 15:30
+# 2026-08-27 23:00
 # act-release-lin-mac.yml
 name: act-Release -Lin-Mac
 
@@ -244,29 +244,33 @@ jobs:
           ls -la;
           for plug1 in $extra_plugin_list1 ; do
             echo "ExtraPluginS=$plug1";
-            git clone --depth 1 https://github.com/deep-soft/far2l-$plug1.git && \
-            ( echo "mv far2l-$plug1 $plug1" && \
-              mv far2l-$plug1 $plug1 && \
-              cd $plug1 && \
-              find . -mindepth 1 -name 'src' -prune -o -exec rm -rf {} + && \
-              mv src/* . && rm -rf src )
-            echo "add_subdirectory($plug1)" >> "CMakeLists.txt";
+            if [[ -f bins/plugins-extra/$plug1.tar.gz ]]; then
+              pushd plugins;
+              tar -xvf ../bins/plugins-extra/$plug1.tar.gz;
+              popd;
+            fi
+            echo "add_subdirectory (plugins/$plug1)" >> "CMakeLists-extra.txt";
             echo "ExtraPluginF=$plug1";
           done
-          
+
           for plug2 in $extra_plugin_list2 ; do
             echo "ExtraPluginS=$plug2";
-            git clone --depth 1 https://github.com/deep-soft/far2l-$plug2.git && \
-            ( echo "mv far2l-$plug2 $plug2" && \
-              mv far2l-$plug2 $plug2 )
-            echo "add_subdirectory($plug2)" >>  "CMakeLists.txt";
+            if [[ -f bins/plugins-extra/$plug2.tar.gz ]]; then
+              pushd plugins;
+              tar -xvf ../bins/plugins-extra/$plug2.tar.gz;
+              popd;
+            fi
+            echo "add_subdirectory (plugins/$plug2)" >> "CMakeLists-extra.txt";
             echo "ExtraPluginF=$plug2";
           done
-          grep "add_subdirectory" "CMakeLists.txt";
+
+          echo "include (CMakeLists-extra.txt)" >> "CMakeLists.txt";
+
+          grep "CMakeLists-extra" "CMakeLists.txt";
+
           echo "list folder:2:";
           ls -la;
         fi
-
 
 # source archive - begin
     - name: create source archive
