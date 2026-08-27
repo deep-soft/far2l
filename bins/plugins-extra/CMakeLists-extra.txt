@@ -1,0 +1,9 @@
+
+# add to CMakeLists.txt
+# include (CMakeLists-extra.txt)
+
+add_subdirectory (plugins/netcfgplugin)
+add_subdirectory (plugins/sqlplugin)
+add_subdirectory (plugins/processes)
+add_subdirectory (plugins/SimpleComment)
+add_subdirectory (plugins/EditWrap)
