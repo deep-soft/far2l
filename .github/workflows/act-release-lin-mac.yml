@@ -239,7 +239,7 @@ jobs:
           fi
 
           # add new extra plugins
-          cd plugins;
+          # other plugins in plugins/ folder;
           echo "list folder:1:";
           ls -la;
           for plug1 in $extra_plugin_list1 ; do
@@ -250,7 +250,7 @@ jobs:
               cd $plug1 && \
               find . -mindepth 1 -name 'src' -prune -o -exec rm -rf {} + && \
               mv src/* . && rm -rf src )
-            echo "add_subdirectory(plugins/$plug1)" >> "../CMakeLists.txt";
+            echo "add_subdirectory($plug1)" >> "CMakeLists.txt";
             echo "ExtraPluginF=$plug1";
           done
           
@@ -259,14 +259,46 @@ jobs:
             git clone --depth 1 https://github.com/deep-soft/far2l-$plug2.git && \
             ( echo "mv far2l-$plug2 $plug2" && \
               mv far2l-$plug2 $plug2 )
-            echo "add_subdirectory(plugins/$plug2)" >>  "../CMakeLists.txt";
+            echo "add_subdirectory($plug2)" >>  "CMakeLists.txt";
             echo "ExtraPluginF=$plug2";
           done
-          grep "add_subdirectory" "../CMakeLists.txt";
+          grep "add_subdirectory" "CMakeLists.txt";
           echo "list folder:2:";
           ls -la;
-          cd "..";
         fi
+
+
+# source archive - begin
+    - name: create source archive
+      if: matrix.job.os == 'ubuntu-22.04'
+      run: |
+        echo "create source archive";
+
+    - name: Create source archive
+      if: matrix.job.os == 'ubuntu-22.04'
+      continue-on-error: true
+      uses: deep-soft/zip-release@v5
+      # archive name is ${{ env.ZIP_RELEASE_ARCHIVE }}
+      with:
+        type: 'tar.xz'
+        filename: "${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-src-${{ matrix.job.name }}"
+        directory: '.'
+        exclusions: '.git/objects'
+        recursive_exclusions: '.git/objects'
+        path: '.'
+        env_variable: ASSET_SRC
+
+    - name: Publish source archive
+      continue-on-error: true
+      uses: deep-soft/action-gh-release@v3
+      with:
+        draft: true
+        tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
+        files: |
+          ${{ env.ASSET_SRC }}
+          ${{ env.ZIP_RELEASE_ARCHIVE }}
+
+# source archive - end
 
     - name: add dependencies
       shell: bash
@@ -335,38 +367,6 @@ jobs:
         if [[ ${{ matrix.job.os }} =~ "macos-14" ]]; then
           brew link libarchive --force
         fi
-
-# source archive - begin
-    - name: create source archive
-      if: matrix.job.os == 'ubuntu-22.04'
-      run: |
-        echo "create source archive";
-
-    - name: Create source archive
-      if: matrix.job.os == 'ubuntu-22.04'
-      continue-on-error: true
-      uses: deep-soft/zip-release@v5
-      # archive name is ${{ env.ZIP_RELEASE_ARCHIVE }}
-      with:
-        type: 'tar.xz'
-        filename: "${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-src-${{ matrix.job.name }}"
-        directory: '.'
-        exclusions: '.git/objects'
-        recursive_exclusions: '.git/objects'
-        path: '.'
-        env_variable: ASSET_SRC
-
-    - name: Publish source archive
-      continue-on-error: true
-      uses: deep-soft/action-gh-release@v3
-      with:
-        draft: true
-        tag_name: ${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}
-        files: |
-          ${{ env.ASSET_SRC }}
-          ${{ env.ZIP_RELEASE_ARCHIVE }}
-
-# source archive - end
 
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
