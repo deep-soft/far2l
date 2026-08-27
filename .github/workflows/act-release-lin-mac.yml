@@ -1,4 +1,4 @@
-# 2026-08-15 22:30
+# 2026-08-27 15:30
 # act-release-lin-mac.yml
 name: act-Release -Lin-Mac
 
@@ -217,6 +217,7 @@ jobs:
         fi
       
     - name: extra plugins
+      continue-on-error: true
       if: ${{ inputs.PLUGINS_EXTRA }}
       shell: bash
       run: |
@@ -238,6 +239,9 @@ jobs:
           fi
 
           # add new extra plugins
+          cd plugins;
+          echo "list folder:1:";
+          ls -la;
           for plug1 in $extra_plugin_list1 ; do
             echo "ExtraPluginS=$plug1";
             git clone --depth 1 https://github.com/deep-soft/far2l-$plug1.git && \
@@ -246,7 +250,7 @@ jobs:
               cd $plug1 && \
               find . -mindepth 1 -name 'src' -prune -o -exec rm -rf {} + && \
               mv src/* . && rm -rf src )
-            echo "add_subdirectory($plug1)" >> CMakeLists.txt;
+            echo "add_subdirectory(plugins/$plug1)" >> "../CMakeLists.txt";
             echo "ExtraPluginF=$plug1";
           done
           
@@ -255,10 +259,13 @@ jobs:
             git clone --depth 1 https://github.com/deep-soft/far2l-$plug2.git && \
             ( echo "mv far2l-$plug2 $plug2" && \
               mv far2l-$plug2 $plug2 )
-            echo "add_subdirectory($plug2)" >> CMakeLists.txt
+            echo "add_subdirectory(plugins/$plug2)" >>  "../CMakeLists.txt";
             echo "ExtraPluginF=$plug2";
           done
-          grep "add_subdirectory" CMakeLists.txt
+          grep "add_subdirectory" "../CMakeLists.txt";
+          cd "..";
+          echo "list folder:2:";
+          ls -la;
         fi
 
     - name: add dependencies
