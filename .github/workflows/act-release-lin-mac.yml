@@ -263,9 +263,9 @@ jobs:
             echo "ExtraPluginF=$plug2";
           done
           grep "add_subdirectory" "../CMakeLists.txt";
-          cd "..";
           echo "list folder:2:";
           ls -la;
+          cd "..";
         fi
 
     - name: add dependencies
