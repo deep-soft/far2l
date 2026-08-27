@@ -338,18 +338,18 @@ jobs:
 
 # source archive - begin
     - name: create source archive
-      if: always() && matrix.job.name == 'min' && matrix.job.os == 'ubuntu-22.04'
+      if: matrix.job.os == 'ubuntu-22.04'
       run: |
         echo "create source archive";
 
     - name: Create source archive
-      if: always() && matrix.job.name == 'min' && matrix.job.os == 'ubuntu-22.04'
+      if: matrix.job.os == 'ubuntu-22.04'
       continue-on-error: true
       uses: deep-soft/zip-release@v5
       # archive name is ${{ env.ZIP_RELEASE_ARCHIVE }}
       with:
         type: 'tar.xz'
-        filename: "${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-src"
+        filename: "${{ env.PROG_NAME }}-${{ env.PROG_VERSION }}-src-${{ matrix.job.name }}"
         directory: '.'
         exclusions: '.git/objects'
         recursive_exclusions: '.git/objects'
