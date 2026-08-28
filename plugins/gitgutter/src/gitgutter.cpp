@@ -731,7 +731,7 @@ static bool WriteEditorBufferToTemp(std::string &path)
 		if (egs.StringEOL && *egs.StringEOL) {
 			Wide2MB(egs.StringEOL, mb, true);
 		} else if (i + 1 < ei.TotalLines) {
-			mb+= "\n";
+			mb+= '\n';
 		}
 		fwrite(mb.data(), 1, mb.size(), f);
 	}
@@ -995,12 +995,31 @@ static bool RunDiffCommand(const std::string &repo_root, const std::string &file
 	return false;
 }
 
-static bool TryRunEditorBufferDiff(EditorState &st, std::string &out, std::string &effective_baseline)
+struct FileWithEditorContent
 {
-	if (!WriteEditorBufferToTemp(st.temp_path)) {
+	std::string path;
+	bool is_temp_path{false};
+
+	FileWithEditorContent(EditorInfo &ei, EditorState &st)
+	{
+		if ((ei.CurState & ECSTATE_MODIFIED) != 0 || st.file.empty()) {
+			if (!WriteEditorBufferToTemp(st.temp_path)) {
+				return;
+			}
+			path = st.temp_path;
+			is_temp_path = true;
+		} else {
+			path = st.file;
+		}
+	}
+};
+
+static bool TryRunEditorBufferDiff(EditorInfo &ei, EditorState &st, std::string &out, std::string &effective_baseline)
+{
+	FileWithEditorContent content_file(ei, st);
+	if (content_file.path.empty()) {
 		return false;
 	}
-
 	std::string base_path;
 	std::string base_temp;
 	if (g_settings.baseline == "unstaged") {
@@ -1013,8 +1032,10 @@ static bool TryRunEditorBufferDiff(EditorState &st, std::string &out, std::strin
 		if (!GetRelativePath(st.repo_root, st.file, rel_path)
 				|| !WriteBaselineToTempWithFallback(st.repo_root, rel_path, g_settings.baseline,
 						base_temp, effective_baseline)) {
-			unlink(st.temp_path.c_str());
-			st.temp_path.clear();
+			if (content_file.is_temp_path) {
+				unlink(st.temp_path.c_str());
+				st.temp_path.clear();
+			}
 			return false;
 		}
 		base_path = base_temp;
@@ -1022,12 +1043,11 @@ static bool TryRunEditorBufferDiff(EditorState &st, std::string &out, std::strin
 
 	std::string root_arg = st.repo_root;
 	std::string base_arg = base_path;
-	std::string temp_arg = st.temp_path;
 	QuoteCmdArgIfNeed(root_arg);
 	QuoteCmdArgIfNeed(base_arg);
-	QuoteCmdArgIfNeed(temp_arg);
+	QuoteCmdArgIfNeed(content_file.path);
 	const std::string cmd = "git -C " + root_arg
-			+ " diff --no-color --unified=0 --no-index -- " + base_arg + " " + temp_arg;
+			+ " diff --no-color --unified=0 --no-index -- " + base_arg + " " + content_file.path;
 	RunCommand(cmd, out);
 	if (!base_temp.empty()) {
 		unlink(base_temp.c_str());
@@ -1101,7 +1121,8 @@ static void UpdateEditorState(EditorState &st)
 
 	std::string out;
 	std::string effective_baseline = g_settings.baseline;
-	if (!TryRunEditorBufferDiff(st, out, effective_baseline)) {
+
+	if (!TryRunEditorBufferDiff(ei, st, out, effective_baseline)) {
 		RunDiffCommand(st.repo_root, st.file, out, effective_baseline);
 	}
 
@@ -1561,14 +1582,14 @@ static int ShowConfigDialog(const std::wstring *git_info, const std::string *rep
 
 	std::vector<std::string> baseline_values;
 	std::vector<std::wstring> baseline_labels;
-	auto add_baseline = [&](const std::string &v)
+	auto add_baseline = [&](const std::string &v, const wchar_t *label = nullptr)
 	{
 		baseline_values.push_back(v);
-		baseline_labels.push_back(StrMB2Wide(v));
+		baseline_labels.push_back(label ? std::wstring(label) : StrMB2Wide(v));
 	};
-	add_baseline("head");
-	add_baseline("index");
-	add_baseline("unstaged");
+	add_baseline("head", GetMsg(MBaselineHead));
+	add_baseline("index", GetMsg(MBaselineIndex));
+	add_baseline("unstaged", GetMsg(MBaselineFile));
 
 	std::string branches_out;
 	if (repo_root && !repo_root->empty()) {
