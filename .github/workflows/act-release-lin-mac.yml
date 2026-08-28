@@ -241,12 +241,12 @@ jobs:
           # add new extra plugins
           # other plugins in plugins/ folder;
           echo "list folder:1:";
-          ls -la;
+          ls -la plugins;
           for plug1 in $extra_plugin_list1 ; do
             echo "ExtraPluginS=$plug1";
             if [[ -f bins/plugins-extra/$plug1.tar.gz ]]; then
               pushd plugins;
-              tar -xvf ../bins/plugins-extra/$plug1.tar.gz;
+              tar -xf ../bins/plugins-extra/$plug1.tar.gz;
               popd;
             fi
             echo "add_subdirectory (plugins/$plug1)" >> "CMakeLists-extra.txt";
@@ -257,7 +257,7 @@ jobs:
             echo "ExtraPluginS=$plug2";
             if [[ -f bins/plugins-extra/$plug2.tar.gz ]]; then
               pushd plugins;
-              tar -xvf ../bins/plugins-extra/$plug2.tar.gz;
+              tar -xf ../bins/plugins-extra/$plug2.tar.gz;
               popd;
             fi
             echo "add_subdirectory (plugins/$plug2)" >> "CMakeLists-extra.txt";
@@ -269,7 +269,7 @@ jobs:
           grep "CMakeLists-extra" "CMakeLists.txt";
 
           echo "list folder:2:";
-          ls -la;
+          ls -la plugins;
         fi
 
 # source archive - begin
