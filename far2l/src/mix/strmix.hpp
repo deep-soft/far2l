@@ -146,3 +146,14 @@ bool SearchString(const wchar_t *Source, int StrSize, const FARString &Str, FARS
 // Clear cached regex pattern (call when search pattern changes significantly)
 void ClearSearchStringCache();
 
+
+inline int MaxStrLength(const wchar_t *str)
+{
+	return StrLength(str);
+}
+
+template <class... OtherT>
+	int MaxStrLength(const wchar_t *str, OtherT... other)
+{
+	return std::max(MaxStrLength(str), MaxStrLength(other...));
+}
