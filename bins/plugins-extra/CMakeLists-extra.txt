@@ -1,9 +1,22 @@
-
 # add to CMakeLists.txt
 # include (CMakeLists-extra.txt)
 
-add_subdirectory (plugins/netcfgplugin)
-add_subdirectory (plugins/sqlplugin)
-add_subdirectory (plugins/processes)
-add_subdirectory (plugins/SimpleComment)
-add_subdirectory (plugins/EditWrap)
+if (NOT DEFINED NETCFGPLUGIN OR NETCFGPLUGIN)
+  add_subdirectory(plugins/netcfgplugin)
+endif()
+
+if (NOT DEFINED SQLPLUGIN OR SQLPLUGIN)
+  add_subdirectory(plugins/sqlplugin)
+endif()
+
+if (NOT DEFINED PROCESSES OR PROCESSES)
+  add_subdirectory(plugins/processes)
+endif()
+
+if (NOT DEFINED SIMPLECOMMENT OR SIMPLECOMMENT)
+  add_subdirectory(plugins/SimpleComment)
+endif()
+
+if (NOT DEFINED EDITWRAP OR EDITWRAP)
+  add_subdirectory(plugins/EditWrap)
+endif()
