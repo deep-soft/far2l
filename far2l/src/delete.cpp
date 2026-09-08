@@ -363,7 +363,7 @@ static ULONG ShellCalcCountOfItemsToDelete(Panel *SrcPanel, bool Wipe)
 				if (di.FromFS(strSelName, 0) <= 0)
 					return (ULONG)-1;
 
-				ItemsCount+= di.FileCount + di.DirCount;
+				ItemsCount+= di.DeviceCount + di.FileCount + di.DirCount;
 			}
 		}
 	}

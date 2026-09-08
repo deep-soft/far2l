@@ -288,9 +288,8 @@ int DirInfo::FromFS(const wchar_t *DirName, DWORD Flags, FileFilter *Filter, Dir
 			}
 		}
 
-		const DWORD file_attributes = FindData.dwFileAttributes;
-		const bool is_directory = (file_attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-		const bool is_reparse_point = (file_attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+		const bool is_directory = (FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+		const bool is_reparse_point = (FindData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
 
 		if (is_directory) {
 			/*
@@ -336,7 +335,11 @@ int DirInfo::FromFS(const wchar_t *DirName, DWORD Flags, FileFilter *Filter, Dir
 				}
 			}
 
-			FileCount++;
+			if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DEVICE) {
+				DeviceCount++;
+			} else {
+				FileCount++;
+			}
 		}
 
 		if (!is_directory || count_dir_size) {
@@ -394,7 +397,11 @@ int DirInfo::FromPlugin(HANDLE hPlugin, const wchar_t *DirName, DWORD Flags)
 			if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 				DirCount++;
 			} else {
-				FileCount++;
+				if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DEVICE) {
+					DeviceCount++;
+				} else {
+					FileCount++;
+				}
 				FileSize+= FindData.nFileSize;
 				PhysicalSize+= FindData.nPhysicalSize ? FindData.nPhysicalSize : FindData.nFileSize;
 			}

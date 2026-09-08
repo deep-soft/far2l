@@ -16752,7 +16752,7 @@ MenuCompareFolders
 
 MenuCompareFiles
 "Сравнение фа&йлов         Ctrl+D"
-"File &diff           Ctrl+D"
+"File diff           Ctrl+D"
 "Porovnat &soubory               Ctrl+D"
 "D&ateien vergleichen  Ctrl+D"
 "Fájl &diff           Ctrl+D"
@@ -17115,7 +17115,7 @@ MenuFileAssociations
 
 MenuBookmarks
 "Зак&ладки на папки"
-"Folder boo&kmarks"
+"Fol&der bookmarks"
 "A&dresářové zkratky"
 "Or&dnerschnellzugriff"
 "Mappa gyorsbillent&yűk"
@@ -18588,26 +18588,26 @@ DragCopy
 
 ProcessListTitle
 l:
-"Список задач"
-"Task list"
-"Seznam úloh"
-"Taskliste"
-"Futó programok"
-"Lista zadań"
-"Lista de tareas"
-"Список завдань"
-"Спіс &заданняў"
+"Список задач (Time, PID, User, Name, CPU, RSS), Автообновление: %s, Сортировка: %c"
+"Task list (Time, PID, User, Name, CPU, RSS), AutoRefresh: %s, Sort: %c"
+"Seznam úloh (Time, PID, User, Name, CPU, RSS), AutoRefresh: %s, Sort: %c"
+"Taskliste (Time, PID, User, Name, CPU, RSS), AutoRefresh: %s, Sort: %c"
+"Futó programok (Time, PID, User, Name, CPU, RSS), AutoRefresh: %s, Sort: %c"
+"Lista zadań (Time, PID, User, Name, CPU, RSS), AutoRefresh: %s, Sort: %c"
+"Lista de tareas (Time, PID, User, Name, CPU, RSS), AutoRefresh: %s, Sort: %c"
+"Список завдань (Time, PID, User, Name, CPU, RSS), AutoRefresh: %s, Sort: %c"
+"Спіс &заданняў (Time, PID, User, Name, CPU, RSS), AutoRefresh: %s, Sort: %c"
 
 ProcessListBottom
-"Редактирование: Del Ctrl+R"
-"Edit: Del Ctrl+R"
-"Edit: Del Ctrl+R"
-"Tasten: Entf StrgR"
-"Szerk.: Del Ctrl+R"
-"Edycja: Del Ctrl+R"
-"Editar: Del Ctrl+R"
-"Редагування: Del Ctrl+R"
-"Змена: Del Ctrl+R"
+"Ctrl+R, Kill: [Shift+]Del Sort: t/T time, n/N name, i/I PID, c/C CPU, m/M RSS, Search: ^⌥F"
+"Ctrl+R, Kill: [Shift+]Del Sort: t/T time, n/N name, i/I PID, c/C CPU, m/M RSS, Search: ^⌥F"
+"Ctrl+R, Kill: [Shift+]Del Sort: t/T time, n/N name, i/I PID, c/C CPU, m/M RSS, Search: ^⌥F"
+"StrgR, Kill: [Shift+]Del Sort: t/T time, n/N name, i/I PID, c/C CPU, m/M RSS, Search: ^⌥F"
+"Ctrl+R, Kill: [Shift+]Del Sort: t/T time, n/N name, i/I PID, c/C CPU, m/M RSS, Search: ^⌥F"
+"Ctrl+R, Kill: [Shift+]Del Sort: t/T time, n/N name, i/I PID, c/C CPU, m/M RSS, Search: ^⌥F"
+"Ctrl+R, Kill: [Shift+]Del Sort: t/T time, n/N name, i/I PID, c/C CPU, m/M RSS, Search: ^⌥F"
+"Ctrl+R, Kill: [Shift+]Del Sort: t/T time, n/N name, i/I PID, c/C CPU, m/M RSS, Search: ^⌥F"
+"Ctrl+R, Kill: [Shift+]Del Sort: t/T time, n/N name, i/I PID, c/C CPU, m/M RSS, Search: ^⌥F"
 
 KillProcessTitle
 "Удаление задачи"
@@ -18774,6 +18774,17 @@ QuickViewFiles
 "archivos"
 "Файлів"
 "Файлаў"
+
+QuickViewDevices
+"Устройств"
+"Devices"
+upd:"Devices"
+upd:"Devices"
+upd:"Devices"
+upd:"Devices"
+upd:"Devices"
+upd:"Devices"
+upd:"Devices"
 
 QuickViewBytes
 "Размер файлов"

@@ -66,8 +66,10 @@ struct DirInfo
 {
 	uint64_t FileSize{};
 	uint64_t PhysicalSize{};
+
 	uint64_t DirCount{};
 	uint64_t FileCount{};
+	uint64_t DeviceCount{};
 
 	std::unique_ptr<DirInfoExtraSummary> ExtraSummary;
 

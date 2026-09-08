@@ -171,12 +171,14 @@ void QuickView::PrintContent(const wchar_t *WalkedNowDir)
 		SetFarColor(COL_PANELTEXT);
 		if (Directory == 1 || Directory == 4 || Directory == -1) {
 			auto FirstColumnLen = 2 + std::max(StrLength(Msg::QuickViewContains),
-				1 + MaxStrLength(Msg::QuickViewFolders, Msg::QuickViewFiles,
+				1 + MaxStrLength(Msg::QuickViewFolders, Msg::QuickViewFiles, Msg::QuickViewDevices,
 						Msg::QuickViewBytes, Msg::QuickViewPhysical, Msg::QuickViewRatio,
 						Msg::QuickViewFilesystems, Msg::QuickViewOuterSymlinks));
 
 			if (++y > 0)
 				PrintNamedValue(X1 + 2, y, FirstColumnLen, Msg::QuickViewContains, nullptr);
+			if (di.DeviceCount && ++y > 0)
+				PrintNamedValue(X1 + 3, y, FirstColumnLen - 1, Msg::QuickViewDevices, InsertCommas(di.DeviceCount, strTmp));
 			if (++y > 0)
 				PrintNamedValue(X1 + 3, y, FirstColumnLen - 1, Msg::QuickViewFolders, InsertCommas(di.DirCount, strTmp));
 			if (++y > 0)

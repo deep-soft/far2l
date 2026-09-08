@@ -2125,8 +2125,20 @@ $ #Історія зміни папок#
 
 @TaskList
 $ #Список завдань#
-    Список завдань відображає активні завдання, використовуючи #htop# (якщо доступно)
-або #top# як резервний варіант.
+    Список завдань відображає активні завдання.
+
+    #Del#                Kill process: sends #SIGTERM# and checks if process really exited as result
+    #Shift-Del#          Kill process: sends #SIGKILL#
+    #Ctrl-R#             Autorefresh on/off (if on, autorefresh each 1 s)
+    #t#/#T#                Sort by time
+    #n#/#N#                Sort by name
+    #i#/#I#                Sort by PID
+    #c#/#C#                Sort by CPU
+    #m#/#M#                Sort by memory (Resident Set Size, RSS)
+    #Ctrl-Alt-F#         Filter list items
+    #Ctrl-F10#           Go to #/proc/PID# directory in active panel (only in Linux)
+
+    See also: common ~menu~@MenuCmd@ keyboard commands.
 
 @CompFolders
 $ #Порівняння папок#
@@ -5205,7 +5217,7 @@ $ #Ways to run programs without blocking far2l#
   When running programs on the internal ~Command line~@CmdLineCmd@, ~File Associations~@FileAssoc@, ~User Menu~@UserMenu@ and actions ~Apply Command~@ApplyCmd@ far2l may be blocked. The following describes how to run without blocking far2l:
 
   Launching programs in an ~external terminal~@ExternalTerminal@ from the far2l command line:
-  - #program#: to launch in an external terminal using #Shift-Enter# (using ~$FARHOME~@FAREnv@/open.sh to launch); 
+  - #program#: to launch in an external terminal using #Shift-Enter# (using ~$FARHOME~@FAREnv@/open.sh to launch);
   - #$FARHOME/open.sh exec program#: to run in an external terminal using #Enter#, exec is required as the first parameter for open.sh;
   - #$FARHOME/open.sh exec sh -c "ls;read k"#: in this case, the ls command will be executed in the external terminal, but the terminal will not close;
 

@@ -5,8 +5,11 @@ Only significant user-side changes are listed here
 or via `git log --no-merges --pretty=format:"%as: %B"`).
 
 ## Master (current development)
-* Quick view panel: directory summary information improvements; colorer on for file preview
-* _colorer plugin_: now working in Viewer (by defauil off) and Quick View panel (by default on), configurable in FarColorer's settings in Viewer coloring combobox
+* Quick view panel: Directory summary information improvements; colorer on for file preview
+* Command line: AutoComplete more correct working inside plugin panels
+* Task list (**Ctrl+W** or **F9**->Commands->Task list): built-in realization instead of htop/top
+* _colorer plugin_: Now working in Viewer (by defauil off) and Quick View panel (by default on), configurable in FarColorer's settings in Viewer coloring combobox
+* _colorer plugin_: Update colorer schemes to v1.3.0 (see: [CHANGELOG.md](https://github.com/elfmz/far2l/blob/master/plugins/colorer/configs/base/CHANGELOG.md))
 * Several bugfixes and improvements
 
 ## 2.9.0 beta (2026-08-27)
