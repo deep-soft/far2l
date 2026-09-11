@@ -101,19 +101,16 @@ static std::string FormatWallTime(unsigned long wall_time)
 	} 
 
 	unsigned int days = hours / 24;
-	if (days > 99999) { // just in case...
-		return StrPrintf("d%07.1f", double(wall_time) / (24 * 3600));
-	}
-	if (days > 9999) { // also not bad
-		return StrPrintf("d%07.2f", double(wall_time) / (24 * 3600));
+	if (days > 9999) { // just in case...
+		return StrPrintf("d%07.0f", double(wall_time) / (24 * 3600));
 	}
 	if (days > 999) {
-		return StrPrintf("d%07.3f", double(wall_time) / (24 * 3600));
+		return StrPrintf("d%07.2f", double(wall_time) / (24 * 3600));
 	}
 	if (days > 99) {
-		return StrPrintf("d%07.4f", double(wall_time) / (24 * 3600));
+		return StrPrintf("d%07.3f", double(wall_time) / (24 * 3600));
 	}
-	return StrPrintf("d%07.5f", double(wall_time) / (24 * 3600));
+	return StrPrintf("d%07.4f", double(wall_time) / (24 * 3600));
 }
 
 static void enumerateProcesses(std::vector<FarPidInfo>& v) 
@@ -362,7 +359,7 @@ void ShowProcessList(Panel *ActivePanel)
 	FARString str_usage;
 	for (unsigned int loop_id = 1; !ProcList.Done(); ++loop_id) {
 		const auto now = GetProcessUptimeMSec();
-		if (last_refresh == 0 || (schedule_refresh && (now >= schedule_refresh || now < last_refresh))) {
+		if (last_refresh == 0 || (schedule_refresh && !ProcList.IsFilterEnabled() && (now >= schedule_refresh || now < last_refresh))) {
 			int selected_pos = ProcList.GetSelectPos();
 			int selected_pid = selected_pos < (int)v.size() ? v[selected_pos].pid : getpid();
 			ProcList.Hide();
