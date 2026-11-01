@@ -1,4 +1,4 @@
-# 2026-08-27 23:00
+# 2026-11-01 08:20
 # act-release-lin-mac.yml
 name: act-Release -Lin-Mac
 
@@ -53,9 +53,10 @@ env:
   PROG_VERSION: "v1.0.0"
   default_branch: "master"
   use_SDL: ""
-  sed_stuff:          "./bins/sed-stuff.sh"
-  filelist_patch:     "./bins/filelist-patch.sh"
-  farver_patch:       "./bins/farver-patch.sh"
+  sed_stuff:           "./bins/sed-stuff.sh"
+  filelist_patch:      "./bins/filelist-patch.sh"
+  farver_patch:        "./bins/farver-patch.sh"
+  edit_redirect_patch: "./bins/edit_redirect_patch.sh"
   multiarc_pdf_patch: "./bins/multiarc-pdf-patch.sh"
 
 jobs:
@@ -165,6 +166,13 @@ jobs:
       run: |
         if [ -f ${{ env.farver_patch }} ]; then
            bash ${{ env.farver_patch }};
+        fi
+
+    - name: ${{ env.edit_redirect_patch }}
+      shell: bash
+      run: |
+        if [ -f ${{ env.edit_redirect_patch }} ]; then
+           bash ${{ env.edit_redirect_patch }};
         fi
 
     - name: set env.SED_EXE and macOS install gnu-sed
