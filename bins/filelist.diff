@@ -1,12 +1,114 @@
 diff --git a/far2l/src/panels/filelist.cpp b/far2l/src/panels/filelist.cpp
+index f1b0adbd8..63687976e 100644
 --- a/far2l/src/panels/filelist.cpp
 +++ b/far2l/src/panels/filelist.cpp
-@@ -3046,7 +3046,7 @@
- 		strMask.Truncate(strMask.GetLength() - 1);
+@@ -3036,49 +3036,82 @@ bool FileList::FileInFilter(long idxItem)
+ // $ 02.08.2000 IG  Wish.Mix #21 - при нажатии '/' или '\' в QuickSearch переходим на директорию
+ bool FileList::FindPartName(const wchar_t *Name, int Next, int Direct, int ExcludeSets)
+ {
++	// deep-soft: quick search "contains" fallback.
++	// 1) names that start with the text (as before);
++	// 2) if none, names that contain the text;
++	// Next (Ctrl-Enter / Ctrl-Shift-Enter) stays in the mode that found the first name;
++	// text with '*' or '?' is used as typed (prefix mask only, no fallback).
++	static bool s_QuickSearchContains = false;
++
+ 	int DirFind = 0;
+ 	int Length = StrLength(Name);
+-	FARString strMask;
+-	strMask = Name;
++	FARString strCore;
++	strCore = Name;
+ 
+ 	if (Length > 0 && IsSlash(Name[Length - 1])) {
+ 		DirFind = 1;
+-		strMask.Truncate(strMask.GetLength() - 1);
++		strCore.Truncate(strCore.GetLength() - 1);
  	}
  
 -	strMask+= L"*";
-+	strMask = L"*" + strMask + L"*";
++	const bool HasWildcards = (wcspbrk(strCore.CPtr(), L"*?") != nullptr);
  
  	if (ExcludeSets) {
- 		ReplaceStrings(strMask, L"[", L"<[%>", -1);
+-		ReplaceStrings(strMask, L"[", L"<[%>", -1);
+-		ReplaceStrings(strMask, L"]", L"[]]", -1);
+-		ReplaceStrings(strMask, L"<[%>", L"[[]", -1);
++		ReplaceStrings(strCore, L"[", L"<[%>", -1);
++		ReplaceStrings(strCore, L"]", L"[]]", -1);
++		ReplaceStrings(strCore, L"<[%>", L"[[]", -1);
+ 	}
+ 
+-	for (int I = CurFile + (Next ? Direct : 0); I >= 0 && I < ListData.Count(); I+= Direct) {
+-		if (CmpName(strMask, ListData[I]->strName, true)) {
+-			if (!TestParentFolderName(ListData[I]->strName)) {
+-				if (!DirFind || (ListData[I]->FileAttr & FILE_ATTRIBUTE_DIRECTORY)) {
+-					CurFile = I;
+-					CurTopFile = CurFile - (Y2 - Y1) / 2;
+-					ShowFileList(TRUE);
+-					return true;
+-				}
++	auto MakeMask = [&](bool Contains) {
++		FARString strMask;
++		if (Contains)
++			strMask = L"*";
++		strMask+= strCore;
++		strMask+= L"*";
++		return strMask;
++	};
++
++	auto Match = [&](const FARString &strMask, int I) {
++		return CmpName(strMask, ListData[I]->strName, true) && !TestParentFolderName(ListData[I]->strName)
++				&& (!DirFind || (ListData[I]->FileAttr & FILE_ATTRIBUTE_DIRECTORY));
++	};
++
++	auto Search = [&](const FARString &strMask) {
++		for (int I = CurFile + (Next ? Direct : 0); I >= 0 && I < ListData.Count(); I+= Direct) {
++			if (Match(strMask, I)) {
++				CurFile = I;
++				CurTopFile = CurFile - (Y2 - Y1) / 2;
++				ShowFileList(TRUE);
++				return true;
+ 			}
+ 		}
+-	}
+ 
+-	for (int I = (Direct > 0) ? 0 : ListData.Count() - 1; (Direct > 0) ? I < CurFile : I > CurFile;
+-			I+= Direct) {
+-		if (CmpName(strMask, ListData[I]->strName, true)) {
+-			if (!TestParentFolderName(ListData[I]->strName)) {
+-				if (!DirFind || (ListData[I]->FileAttr & FILE_ATTRIBUTE_DIRECTORY)) {
+-					CurFile = I;
+-					CurTopFile = CurFile - (Y2 - Y1) / 2;
+-					ShowFileList(TRUE);
+-					return true;
+-				}
++		for (int I = (Direct > 0) ? 0 : ListData.Count() - 1; (Direct > 0) ? I < CurFile : I > CurFile;
++				I+= Direct) {
++			if (Match(strMask, I)) {
++				CurFile = I;
++				CurTopFile = CurFile - (Y2 - Y1) / 2;
++				ShowFileList(TRUE);
++				return true;
+ 			}
+ 		}
++
++		return false;
++	};
++
++	if (Next)
++		return Search(MakeMask(s_QuickSearchContains && !HasWildcards));
++
++	s_QuickSearchContains = false;
++
++	if (Search(MakeMask(false)))
++		return true;
++
++	if (HasWildcards || strCore.IsEmpty())
++		return false;
++
++	if (Search(MakeMask(true))) {
++		s_QuickSearchContains = true;
++		return true;
+ 	}
+ 
+ 	return false;
