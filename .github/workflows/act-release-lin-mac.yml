@@ -57,6 +57,7 @@ env:
   filelist_patch:      "./bins/filelist-patch.sh"
   farver_patch:        "./bins/farver-patch.sh"
   edit_redirect_patch: "./bins/edit_redirect_patch.sh"
+  octal_column_patch:  "./bins/octal-column-patch.sh"
   multiarc_pdf_patch: "./bins/multiarc-pdf-patch.sh"
 
 jobs:
@@ -173,6 +174,13 @@ jobs:
       run: |
         if [ -f ${{ env.edit_redirect_patch }} ]; then
            bash ${{ env.edit_redirect_patch }};
+        fi
+
+    - name: ${{ env.octal_column_patch }}
+      shell: bash
+      run: |
+        if [ -f ${{ env.octal_column_patch }} ]; then
+           bash ${{ env.octal_column_patch }};
         fi
 
     - name: set env.SED_EXE and macOS install gnu-sed

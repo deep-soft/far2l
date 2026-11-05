@@ -1,0 +1,135 @@
+diff --git a/far2l/bootstrap/scripts/FarEng.hlf.m4 b/far2l/bootstrap/scripts/FarEng.hlf.m4
+index ff36813cd..ec1ba25da 100644
+--- a/far2l/bootstrap/scripts/FarEng.hlf.m4
++++ b/far2l/bootstrap/scripts/FarEng.hlf.m4
+@@ -1863,6 +1863,7 @@ Allowed column types are:
+                         M - use text month names;
+ 
+     A          - file attributes
++    AO         - file permissions in octal, 4 digits (0644, 4755)
+     Z          - file descriptions
+ 
+     O[L]       - file owner
+@@ -4058,6 +4059,7 @@ characters, delimited with commas. Allowed column types are:
+                         M - use text month names;
+ 
+     A          - file attributes
++    AO         - file permissions in octal, 4 digits (0644, 4755)
+     Z          - file descriptions
+ 
+     O[L]       - file owner
+diff --git a/far2l/src/findfile.cpp b/far2l/src/findfile.cpp
+index 40b4f6f66..375bb192d 100644
+--- a/far2l/src/findfile.cpp
++++ b/far2l/src/findfile.cpp
+@@ -1834,6 +1834,9 @@ static int AddMenuRecordSynched(HANDLE hDlg, const wchar_t *FullName, const FAR_
+ 			}
+ 
+ 			case ATTR_COLUMN: {
++				if (ColumnType[Count] & COLUMN_OCTAL)    // deep-soft
++					MenuText << FormatStr_AttributeOctal(FindData.dwUnixMode) << BoxSymbols[BS_V1];
++				else
+ 				MenuText << FormatStr_Attribute(FindData.dwFileAttributes, FindData.dwUnixMode)
+ 							<< BoxSymbols[BS_V1];
+ 				break;
+diff --git a/far2l/src/mix/panelmix.cpp b/far2l/src/mix/panelmix.cpp
+index 2623f0ee5..6b997cff0 100644
+--- a/far2l/src/mix/panelmix.cpp
++++ b/far2l/src/mix/panelmix.cpp
+@@ -351,6 +351,9 @@ void TextToViewSettings(const wchar_t *ColumnTitles, const wchar_t *ColumnWidths
+ 					if (strArgName.At(0) == L'U') {
+ 						unsigned int &ColumnType = ViewColumnTypes[ColumnCount];
+ 						ColumnType = GROUP_COLUMN;
++					} else if (strArgName.At(0) == L'A' && strArgName.At(1) == L'O') {
++						// deep-soft: AO = file permissions in octal (0644, 4755)
++						ViewColumnTypes[ColumnCount] = ATTR_COLUMN | COLUMN_OCTAL;
+ 					} else if (strArgName.At(0) == L'O') {
+ 						unsigned int &ColumnType = ViewColumnTypes[ColumnCount];
+ 						ColumnType = OWNER_COLUMN;
+@@ -445,6 +448,11 @@ void ViewSettingsToText(unsigned int *ViewColumnTypes, int *ViewColumnWidths, in
+ 				if (ViewColumnTypes[I] & COLUMN_FULLOWNER)
+ 					strColumnTitles+= L'L';
+ 				break;
++
++			case ATTR_COLUMN:
++				if (ViewColumnTypes[I] & COLUMN_OCTAL)
++					strColumnTitles+= L'O';
++				break;
+ 		}
+ 
+ 		strColumnWidths.AppendFormat(L"%d", ViewColumnWidths[I]);
+@@ -458,6 +466,26 @@ void ViewSettingsToText(unsigned int *ViewColumnTypes, int *ViewColumnWidths, in
+ 	}
+ }
+ 
++// deep-soft: permissions in octal, always 4 digits (0644, 4755); blank when the mode is unknown
++const FARString FormatStr_AttributeOctal(DWORD UnixMode, int Width)
++{
++	FormatString strResult;
++	wchar_t OutStr[8] = {L' ', L' ', L' ', L' ', 0};
++	if (UnixMode != 0) {
++		const DWORD Perm = UnixMode & 07777;
++		OutStr[0] = L'0' + ((Perm >> 9) & 7);
++		OutStr[1] = L'0' + ((Perm >> 6) & 7);
++		OutStr[2] = L'0' + ((Perm >> 3) & 7);
++		OutStr[3] = L'0' + (Perm & 7);
++	}
++
++	if (Width > 0)
++		strResult << fmt::Size(Width);
++
++	strResult << OutStr;
++	return std::move(strResult.strValue());
++}
++
+ const FARString FormatStr_Attribute(DWORD FileAttributes, DWORD UnixMode, int Width)
+ {
+ 	FormatString strResult;
+diff --git a/far2l/src/mix/panelmix.hpp b/far2l/src/mix/panelmix.hpp
+index fd533e8eb..b9b814a2d 100644
+--- a/far2l/src/mix/panelmix.hpp
++++ b/far2l/src/mix/panelmix.hpp
+@@ -41,6 +41,7 @@ bool CheckUpdateAnotherPanel(Panel *SrcPanel, const wchar_t *SelName);
+ int _MakePath1(DWORD Key, FARString &strPathName, const wchar_t *Param2, int escaping = 1); // by default escaping filenames
+ 
+ const FARString FormatStr_Attribute(DWORD FileAttributes, DWORD UnixMode, int Width = -1);
++const FARString FormatStr_AttributeOctal(DWORD UnixMode, int Width = -1);  // deep-soft
+ const FARString FormatStr_DateTime(const FILETIME *FileTime, int ColumnType, DWORD Flags, int Width);
+ const FARString FormatStr_Size(int64_t FileSize, int64_t PhysicalSize, const FARString &strName,
+ 		DWORD FileAttributes, uint8_t ShowFolderSize, int ColumnType, DWORD Flags, int Width);
+diff --git a/far2l/src/mix/strmix.hpp b/far2l/src/mix/strmix.hpp
+index b5cfd59c5..704869ecb 100644
+--- a/far2l/src/mix/strmix.hpp
++++ b/far2l/src/mix/strmix.hpp
+@@ -52,6 +52,7 @@ enum
+ 	COLUMN_SHOWBYTESINDEX = 0x00100000,
+ 	COLUMN_FULLOWNER      = 0x00080000,
+ 	COLUMN_AUTO           = 0x00040000,
++	COLUMN_OCTAL          = 0x00020000,  // deep-soft: AO = permissions in octal
+ 
+ 	// MINSIZEINDEX может быть только 0, 1, 2 или 3 (K,M,G,T)
+ 	COLUMN_MINSIZEINDEX_MASK = 0x00000003,
+diff --git a/far2l/src/panels/flshow.cpp b/far2l/src/panels/flshow.cpp
+index bdde87bc5..ff4351734 100644
+--- a/far2l/src/panels/flshow.cpp
++++ b/far2l/src/panels/flshow.cpp
+@@ -753,6 +753,9 @@ int FileList::PrepareColumnWidths(unsigned int *ColumnTypes, int *ColumnWidths,
+ 				if (ColumnTypes[I] & COLUMN_MONTH)
+ 					ColumnWidths[I]++;
+ 			}
++
++			if (ColumnType == ATTR_COLUMN && (ColumnTypes[I] & COLUMN_OCTAL))    // deep-soft
++				ColumnWidths[I] = 4;
+ 		}
+ 		else if (Opt.DirNameStyleColumnWidthAlways) {
+ 			if (ColumnType == SIZE_COLUMN || ColumnType == PHYSICAL_COLUMN) {
+@@ -1163,6 +1166,9 @@ void FileList::ShowList(int ShowStatus, int StartColumn, OpenPluginInfo &Info)
+ 						}
+ 
+ 						case ATTR_COLUMN: {
++							if (ColumnTypes[K] & COLUMN_OCTAL)    // deep-soft
++								FS << FormatStr_AttributeOctal(ListData[ListPos]->FileMode, ColumnWidth);
++							else
+ 							FS << FormatStr_Attribute(ListData[ListPos]->FileAttr,
+ 									ListData[ListPos]->FileMode, ColumnWidth);
+ 							break;
