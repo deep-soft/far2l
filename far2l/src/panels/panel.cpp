@@ -77,11 +77,37 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "xlat.hpp"
 #include "vt/vtshell.h"
 #include <StackHeapArray.hpp>
+#include <src/Backend/Backend.h>
 
 static int DragX, DragY, DragMove;
 static Panel *SrcDragPanel;
 static SaveScreen *DragSaveScr = nullptr;
 static FARString strDragName;
+static bool DragFileDataSet = false;
+
+static void SetFileDragData(Panel *panel)
+{
+	if (!g_winport_con_out || panel->GetType() != FILE_PANEL || panel->GetMode() != NORMAL_PANEL)
+		return;
+
+	FARString directory, name;
+	DWORD attributes;
+	std::vector<std::wstring> files;
+	panel->GetCurDir(directory);
+	panel->GetSelNameCompat(nullptr, attributes);
+	while (panel->GetSelNameCompat(&name, attributes)) {
+		if (TestParentFolderName(name))
+			continue;
+
+		FARString path = directory;
+		AddEndSlash(path);
+		path += name;
+		files.emplace_back(path.CPtr());
+	}
+
+	g_winport_con_out->SetFileDragData(files);
+	DragFileDataSet = true;
+}
 
 /*
 	$ 21.08.2002 IS
@@ -542,6 +568,7 @@ int Panel::ChangeDiskMenu(int Pos, int FirstCall)
 						return -1;
 				} break;
 				case KEY_INS:
+				case KEY_CTRLN:
 				case KEY_NUMPAD0: {
 					//					if (item && item->kind == PanelMenuItem::SHORTCUT)
 					//					{
@@ -837,7 +864,7 @@ bool Panel::SetLocation_Plugin(bool file_plugin, Plugin *plugin, const wchar_t *
 bool Panel::SetLocation_Directory(const wchar_t *path)
 {
 	if (!FarChDir(path)) {
-		if (CtrlObject->Plugins.ProcessCommandLine(path)) {
+		if (CtrlObject->Plugins.ProcessCommandLine(path, nullptr, true)) {
 			fprintf(stderr, "SetLocation_Directory('%ls') PLUGIN\n", path);
 			return true;
 		}
@@ -890,14 +917,13 @@ int Panel::OnFCtlSetLocation(const FarPanelLocation *location)
 	return SetLocation_Plugin(false, pPlugin, location->Path, nullptr, location->Item);
 }
 
-void Panel::FastFindProcessName(Edit *FindEdit, const wchar_t *Src, FARString &strLastName,
-		FARString &strName)
+void Panel::FastFindProcessName(Edit *FindEdit, const wchar_t *Src, FARString &strLastName, FARString &strName)
 {
-	wchar_t *Ptr =
-			(wchar_t *)malloc((StrLength(Src) + StrLength(FindEdit->GetStringAddr()) + 32) * sizeof(wchar_t));
+	const auto &e = FindEdit->GetString();
+	wchar_t *Ptr = (wchar_t *)malloc((StrLength(Src) + e.size() + 32) * sizeof(wchar_t));
 
 	if (Ptr) {
-		wcscpy(Ptr, FindEdit->GetStringAddr());
+		wcscpy(Ptr, e.c_str());
 		wchar_t *EndPtr = Ptr + StrLength(Ptr);
 		wcscat(Ptr, Src);
 		Unquote(EndPtr);
@@ -1254,6 +1280,7 @@ int Panel::PanelProcessMouse(MOUSE_EVENT_RECORD *MouseEvent, int &RetCode)
 			DragX = MouseEvent->dwMousePosition.X;
 			DragY = MouseEvent->dwMousePosition.Y;
 			DragMove = ShiftPressed;
+			SetFileDragData(this);
 		}
 	}
 
@@ -1267,6 +1294,11 @@ int Panel::IsDragging()
 
 void Panel::EndDrag()
 {
+	if (DragFileDataSet) {
+		if (g_winport_con_out)
+			g_winport_con_out->SetFileDragData({});
+		DragFileDataSet = false;
+	}
 	delete DragSaveScr;
 	DragSaveScr = nullptr;
 	DragX = DragY = -1;
@@ -1403,7 +1435,7 @@ int Panel::SetCurPath()
 	}
 
 	if (!FarChDir(strCurDir)) {
-		while (!FarChDir(strCurDir)) {
+		for (;;) {
 			int Result = TestFolder(strCurDir);
 
 			if (Result == TSTFLD_NOTFOUND) {

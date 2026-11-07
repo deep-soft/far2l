@@ -13,42 +13,10 @@ in
 {
   nixpkgs.overlays = [
     (final: prev: {
-      # Modified 7zip package with shared library support
-      _7z-far = prev.stdenv.mkDerivation rec {
-        pname = "_7z-far";
-        version = "26.00";
-
-        src = fetchFromGitHub {
-          owner = "ip7z";
-          repo = "7zip";
-          rev = "839151eaaad24771892afaae6bac690e31e58384";
-          sha256 = "sha256-B+piugjEI7+8ILTuDitADY8XseltvV0lYIVecXGib7s=";
-        };
-
-        nativeBuildInputs = [ prev.gcc ];
-
-        buildPhase = ''
-          make -C CPP/7zip/Bundles/Format7zF -f ../../cmpl_gcc.mak
-        '';
-
-        installPhase = ''
-          mkdir -p $out/lib
-          cp -r CPP/7zip/Bundles/Format7zF/b/g/* $out/lib/
-        '';
-
-        meta = with lib; {
-          description = "7z format plugin from ip7z/7zip";
-          homepage = "https://github.com/ip7z/7zip";
-          license = licenses.lgpl21Plus;
-        };
-      };
-    })
-
-    (final: prev: {
       # Custom build of far2l
       far2l = prev.stdenv.mkDerivation rec {
         pname = "far2l";
-        version = "2.8.0-483dea0";
+        version = "2.9.1-3591802";
 
         #separateDebugInfo = true;
 
@@ -56,9 +24,8 @@ in
           owner = "elfmz";
           repo = "far2l";
 
-          rev = "483dea0818c68a95c054f313e099f8b99b722a3d";
-          sha256 = "sha256-LP+agJrYxjH6vLAg6cJTU4/9jYGF9iaZzxA7hozDKNY=";
-
+          rev = "3591802e656cdc0c835882651a7460732dd471f4";
+          sha256 = "sha256-CWFycE3Jb+fie7LXeOzbWf15mil/NgXowY6w0GSvguw=";
         };
 
         postPatch = ''
@@ -75,40 +42,90 @@ in
         ];
 
         buildInputs = [
+          # we need it anyway
+          prev.bash
+          # SDL GUI (testing)
+          prev.SDL2
+          prev.harfbuzz
+          prev.fontconfig
+          prev.libxft
+          # WX GUI
           prev.libx11
           prev.wxwidgets_3_2
+          # Colorer and formattes
           prev.libuchardet
           prev.spdlog
           prev.libxml2
-          prev.libarchive
           prev.pcre
+          # Netrocks
           prev.openssl
           prev.libssh
           prev.libnfs
           prev.neon
-          prev.aws-sdk-cpp
+          prev.gnutls
+          prev.libtasn1
+          prev.p11-kit
+          # ImageViewer
           prev.imagemagick
           prev.ffmpeg
-          final._7z-far
+          # ADB
+          prev.android-tools
+          # MTP
+          prev.libmtp
+          prev.libusb1
+          # GIT
+          prev.git
+          # archivers
+          prev.libarchive
+          prev._7zip-zstd-rar
+          prev._7zz
         ]
         ++ lib.optional (!prev.stdenv.hostPlatform.isDarwin) prev.samba;
 
         cmakeFlags = [
-          "-DTTYX=ON"
-          "-DUSEWX=ON"
-          "-DUSEUCD=ON"
+          "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+          # Pluggins setup
+          "-DADB=ON"
+          "-DALIGN=ON"
+          "-DARCLITE=ON"
+          "-DAUTOWRAP=ON"
+          "-DCALC=ON"
           "-DCOLORER=ON"
+          "-DCOMPARE=ON"
+          "-DDRAWLINE=ON"
+          "-DEDITCASE=ON"
+          "-DEDITORCOMP=ON"
+          "-DEDSORT=ON"
+          "-DFARFTP=ON"
+          "-DFILECASE=ON"
+          "-DGITGUTTER=ON"
+          "-DHEXITOR=ON"
+          "-DIMAGEVIEWER=ON"
+          "-DINCSRCH=ON"
+          "-DINSIDE=ON"
+          "-DMEMO=ON"
+          "-DMTP=ON"
           "-DMULTIARC=ON"
           "-DNETROCKS=ON"
-          "-DAWS_S3=ON"
+          "-DOPENWITH=ON"
+          "-DSIMPLEINDENT=ON"
+          "-DTMPPANEL=ON"
+          "-DTRUNCATE=ON"
+          # Python pluggins support
           "-DPYTHON=OFF"
-          "-DARCLITE=ON"
-          #"-DFAR2L_GUI_BACKEND=SDL"
+          # Backend setup
+          "-DUSESDL=YES"
+          "-DUSEWX=YES"
+          "-DTTYX=YES"
+          # Libruaries setup
+          "-DMTP_SYSTEM_LIBUSB=ON"
+          "-DMTP_SYSTEM_LIBMTP=ON"
         ];
 
         postInstall =
           let
-            archiveTools = with prev; [
+            farTools = with prev; [
+              # archivers
               unrar
               unzip
               zip
@@ -116,18 +133,25 @@ in
               gzip
               bzip2
               gnutar
-              final._7z-far
+              _7zip-zstd-rar
+              _7zz
+              # cli tools
+              git
+              android-tools
+              libmtp
+              libusb1
+              bash
             ];
           in
           ''
-            # Wrap archivers paths to program bin
+            # Wrap tools paths to program bin
             wrapProgram $out/bin/far2l \
-              --prefix PATH : ${lib.makeBinPath archiveTools}
+              --prefix PATH : ${lib.makeBinPath farTools}
 
             # Link p7z lib to far plugin arclite home
             echo "Linking 7zzz libraries..."
             mkdir -p $out/lib/far2l/Plugins/arclite/plug/
-            for file in ${final._7z-far}/lib/*; do
+            for file in ${prev._7zz.lib}/lib/*; do
               ln -sf "$file" "$out/lib/far2l/Plugins/arclite/plug/"
             done
           '';

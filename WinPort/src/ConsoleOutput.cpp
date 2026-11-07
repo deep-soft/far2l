@@ -66,6 +66,7 @@ void ConsoleOutput::DeferredRepaints::Add(const SMALL_RECT *areas, size_t cnt)
 	}
 }
 
+static std::atomic<int> s_conout_cnt{0};
 
 ConsoleOutput::ConsoleOutput() :
 	_backend(NULL),
@@ -80,6 +81,19 @@ ConsoleOutput::ConsoleOutput() :
 	_scroll_region.top = 0;
 	_scroll_region.bottom = MAXSHORT;
 	SetSize(80, 25);
+	int cnt = ++s_conout_cnt;
+	if (cnt > 4) {
+		fprintf(stderr, "ConsoleOutput: instances count increased to %d %s\n",
+			cnt, (cnt > 100) ? "!!!" : ((cnt > 10) ? "!" : ""));
+	}
+}
+
+ConsoleOutput::~ConsoleOutput()
+{
+	int cnt = --s_conout_cnt;
+	if (cnt >= 4) {
+		fprintf(stderr, "ConsoleOutput: instances count decreased to %d\n", cnt);
+	}
 }
 
 
@@ -437,16 +451,19 @@ SHORT ConsoleOutput::ModifySequenceEntityAt(SequenceModifier &sm, COORD pos, SMA
 
 			} else if (CharClasses::IsSuffix(*sm.str)) {
 				out = 0;
-				if (*sm.str == CharClasses::VARIATION_SELECTOR_16) {
-					// The previous character should be rendered as an image
-					out = 1;
-					needs_trailing_blank=true;
-				}
 				if (!readPrevChar(ch)) {
 					return false;
 				}
 				pos = _prev_pos;
 				std::wstring tmp  = extractString(ch);
+				if (*sm.str == CharClasses::VARIATION_SELECTOR_16
+						&& tmp.find(CharClasses::ZERO_WIDTH_JOINER) == std::wstring::npos) {
+					// A standalone VS16 changes its preceding narrow character into a
+					// two-cell emoji.  A ZWJ sequence has already reserved the width of
+					// its first character, so advancing here would widen the cluster.
+					out = 1;
+					needs_trailing_blank = true;
+				}
 				tmp+= *sm.str;
 				CI_SET_COMPOSITE(ch, tmp.c_str());
 			} else if (*sm.str == L'\t' && (_mode & ENABLE_PROCESSED_OUTPUT) != 0) {
@@ -814,6 +831,12 @@ void ConsoleOutput::ConsoleDisplayNotification(const WCHAR *title, const WCHAR *
 {
 	if (_backend)
 		_backend->OnConsoleDisplayNotification(title, text);
+}
+
+void ConsoleOutput::SetFileDragData(const std::vector<std::wstring> &files)
+{
+	if (_backend)
+		_backend->OnConsoleSetFileDragData(files);
 }
 
 bool ConsoleOutput::ConsoleBackgroundMode(bool TryEnterBackgroundMode)

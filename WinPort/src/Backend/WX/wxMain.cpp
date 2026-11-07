@@ -1,11 +1,11 @@
 #include "wxMain.h"
 #include <dlfcn.h>
+#include <wx/dnd.h>
 #include "../NotifySh.h"
 #include "wxWinTranslations.h"
 #include "wxKeyboardLedsState.h"
 #include "../../../utils/src/POpen.cpp"
 #include <vector>
-#include <memory>
 #include "wxPrinterSupport.h"
 
 #define AREAS_REDUCTION
@@ -294,6 +294,7 @@ struct EventWithRect : EventWith<SMALL_RECT>
 typedef EventWith<bool> EventWithBool;
 typedef EventWith<DWORD> EventWithDWORD;
 typedef EventWith<DWORD64> EventWithDWORD64;
+typedef EventWith<std::vector<std::wstring>> EventWithFiles;
 
 ///////////////////////////////////////////
 
@@ -309,6 +310,7 @@ wxDEFINE_EVENT(WX_CONSOLE_CHANGE_FONT, wxCommandEvent);
 wxDEFINE_EVENT(WX_CONSOLE_SAVE_WIN_STATE, wxCommandEvent);
 wxDEFINE_EVENT(WX_CONSOLE_SET_CURSOR_BLINK_TIME, wxCommandEvent);
 wxDEFINE_EVENT(WX_CONSOLE_EXIT, wxCommandEvent);
+wxDEFINE_EVENT(WX_CONSOLE_SET_FILE_DRAG_DATA, wxCommandEvent);
 
 
 ////////////////////////////////////////// app
@@ -583,6 +585,7 @@ wxBEGIN_EVENT_TABLE(WinPortPanel, wxPanel)
 	EVT_COMMAND(wxID_ANY, WX_CONSOLE_CHANGE_FONT, WinPortPanel::OnConsoleChangeFontSync)
 	EVT_COMMAND(wxID_ANY, WX_CONSOLE_SET_CURSOR_BLINK_TIME, WinPortPanel::OnConsoleSetCursorBlinkTimeSync)
 	EVT_COMMAND(wxID_ANY, WX_CONSOLE_EXIT, WinPortPanel::OnConsoleExitSync)
+	EVT_COMMAND(wxID_ANY, WX_CONSOLE_SET_FILE_DRAG_DATA, WinPortPanel::OnConsoleSetFileDragDataSync)
 
 	EVT_IDLE(WinPortPanel::OnIdle)
 	EVT_KEY_DOWN(WinPortPanel::OnKeyDown)
@@ -1471,6 +1474,11 @@ void WinPortPanel::OnKeyDown( wxKeyEvent& event )
 	const DWORD &dwMods = (ir.Event.KeyEvent.dwControlKeyState
 		& (LEFT_ALT_PRESSED | SHIFT_PRESSED | LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED));
 
+	DWORD activeMods = dwMods;
+	if (_key_tracker.RightAlt() && !_key_tracker.LeftControl()) {
+		activeMods &= ~LEFT_CTRL_PRESSED;
+	}
+
 	if (event.GetKeyCode() == WXK_RETURN && dwMods == LEFT_ALT_PRESSED
 		&& (_prev_key_code == WXK_ALT || _prev_key_code == WXK_RETURN)) {
 
@@ -1501,11 +1509,11 @@ void WinPortPanel::OnKeyDown( wxKeyEvent& event )
 	// We can not trust OnKeyDown Unicode character value for Alt+letter due to wx issue #23421,
 	// so let's fall back to OnChar value for such key combinations.
 
-	if ( (dwMods != 0 && event.GetUnicodeKey() < 32)
-		|| ((dwMods & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED | LEFT_ALT_PRESSED))
+	if ( (activeMods != 0 && event.GetUnicodeKey() < 32 && !_key_tracker.RightAlt())
+		|| ((activeMods & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED | LEFT_ALT_PRESSED))
 #if !defined(__WXOSX__) && wxCHECK_VERSION(3, 2, 3) // workaround is still needed at least in wx 3.2.6, see wx issue #24772
 
-			&& (/*g_wayland ||*/ !event.AltDown() || !isLayoutDependentKey(event)) // workaround for wx issue #23421
+			&& (/*g_wayland ||*/ (!event.AltDown() || _key_tracker.RightAlt()) || !isLayoutDependentKey(event)) // workaround for wx issue #23421
 #endif
 			)
 		|| event.GetKeyCode() == WXK_DELETE || event.GetKeyCode() == WXK_RETURN
@@ -1730,7 +1738,7 @@ void WinPortPanel::OnChar( wxKeyEvent& event )
 		ir.Event.KeyEvent.uChar.UnicodeChar = event.GetUnicodeKey();
 
 #if !defined(__WXOSX__) && wxCHECK_VERSION(3, 2, 3)
-		if (event.AltDown() && isLayoutDependentKey(event)) {
+		if (event.AltDown() && !_key_tracker.RightAlt() && isLayoutDependentKey(event)) {
 
 			// workaround for wx issue #23421
 
@@ -1831,11 +1839,21 @@ COORD WinPortPanel::TranslateMousePosition( wxMouseEvent &event )
 	return out;
 }
 
+void WinPortPanel::EnsureMouseReleasedFromDrag()
+{
+	if (_drag_captured_mouse && HasCapture()) {
+		ReleaseMouse();
+		_drag_captured_mouse = false;
+	}
+}
+
 void WinPortPanel::OnMouse( wxMouseEvent &event )
 {
 	ResetTimerIdling();
 
 	COORD pos_char = TranslateMousePosition( event );
+	const bool left_down = event.LeftDown() && !_last_mouse_event.LeftDown();
+	const bool left_up = event.LeftUp();
 
 	DWORD mode = 0;
 	if (!WINPORT(GetConsoleMode)(NULL, &mode))
@@ -1850,10 +1868,60 @@ void WinPortPanel::OnMouse( wxMouseEvent &event )
 
 	_last_mouse_event = event;
 
-	if ((mode&ENABLE_QUICK_EDIT_MODE) || _adhoc_quickedit)
+	if ((mode&ENABLE_QUICK_EDIT_MODE) || _adhoc_quickedit) {
+		EnsureMouseReleasedFromDrag();
 		OnMouseQEdit( event, pos_char );
-	else if (mode&ENABLE_MOUSE_INPUT)
+	} else if (mode&ENABLE_MOUSE_INPUT) {
 		OnMouseNormal( event, pos_char );
+		if (left_down)
+			BeginExternalFileDrag();
+		else if (event.Dragging())
+			TryStartExternalFileDrag();
+		else if (left_up)
+			EndExternalFileDrag();
+	}
+}
+
+void WinPortPanel::BeginExternalFileDrag()
+{
+	EndExternalFileDrag();
+
+	if (!HasCapture()) {
+		CaptureMouse();
+		_drag_captured_mouse = true;
+	}
+}
+
+void WinPortPanel::TryStartExternalFileDrag()
+{
+	if (_external_drag_active || _external_drag_files.empty() || !HasCapture())
+		return;
+
+	const wxPoint cursor = ScreenToClient(wxGetMousePosition());
+	if (GetClientRect().Contains(cursor))
+		return;
+
+	_external_drag_active = true;
+	EnsureMouseReleasedFromDrag();
+	wxFileDataObject data;
+	for (const auto &file : _external_drag_files)
+		data.AddFile(wxString(file.c_str()));
+	wxDropSource source(this);
+	source.SetData(data);
+	source.DoDragDrop(wxDrag_CopyOnly);
+
+	INPUT_RECORD release{MOUSE_EVENT};
+	release.Event.MouseEvent.dwMousePosition = _last_mouse_click;
+	wxConsoleInputShim::Enqueue(&release, 1);
+	_mouse_state &= ~FROM_LEFT_1ST_BUTTON_PRESSED;
+	_external_drag_active = false;
+	_external_drag_files.clear();
+}
+
+void WinPortPanel::EndExternalFileDrag()
+{
+	EnsureMouseReleasedFromDrag();
+	_external_drag_files.clear();
 }
 
 void WinPortPanel::OnMouseNormal( wxMouseEvent &event, COORD pos_char)
@@ -2186,10 +2254,22 @@ void WinPortPanel::OnConsoleSetCursorBlinkTime(DWORD interval)
 		wxQueueEvent(this, event);
 }
 
+void WinPortPanel::OnConsoleSetFileDragData(const std::vector<std::wstring> &files)
+{
+	EventWithFiles *event = new(std::nothrow) EventWithFiles(files, WX_CONSOLE_SET_FILE_DRAG_DATA);
+	if (event)
+		wxQueueEvent(this, event);
+}
+
+void WinPortPanel::OnConsoleSetFileDragDataSync(wxCommandEvent &event)
+{
+	_external_drag_files = static_cast<EventWithFiles &>(event).cookie;
+}
+
 const char *WinPortPanel::OnConsoleBackendInfo(int entity)
 {
 	if (entity == -1) {
-		return "GUI";
+		return "GUI|WX";
 	}
 
 	if (entity < 0) {
